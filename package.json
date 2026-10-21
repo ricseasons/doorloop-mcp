@@ -1,0 +1,27 @@
+{
+  "name": "doorloop-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for the DoorLoop property management API",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "pack": "npm run build && npm prune --omit=dev && npx -y @anthropic-ai/mcpb pack && npm install",
+    "set-key": "node scripts/set-key.mjs"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  },
+  "type": "module",
+  "bin": {
+    "doorloop-mcp": "dist/index.js"
+  },
+  "private": true
+}
