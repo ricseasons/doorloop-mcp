@@ -58,6 +58,8 @@ Read tools, plus write tools that preview before they create anything:
 | `get_rent_roll` | Rent roll report with balances |
 | `create_task` | Creates an internal task, or a subtask when given `parentTask`. Returns a preview unless `confirm` is true. |
 | `create_work_order` | Creates a vendor work order as a subtask of a task, and can email the vendor. Returns a preview unless `confirm` is true. |
+| `list_accounts` | Chart of accounts, e.g. to pick the account for a parking or pet charge |
+| `create_lease` | Creates a lease with new or existing tenants, rent, security deposit and recurring charges in one transaction (official `POST /leases/full`). Rent and deposit use DoorLoop's default accounts unless given. Portal invite, welcome SMS and late fees are off unless asked. Returns a preview unless `confirm` is true. |
 | `doorloop_get` | Any GET path, for exploring endpoints we haven't wrapped yet |
 
 Requests are throttled to stay under DoorLoop's ~50 requests/minute limit, and 429s are retried.
@@ -82,9 +84,14 @@ ask DoorLoop support to import a spreadsheet.
 Setting up Claude in Chrome (Mac and Windows) is covered step by step in
 [skills/doorloop-web-forms/SETUP.md](skills/doorloop-web-forms/SETUP.md).
 
+## Skills
+
+- [`doorloop-lease-onboarding`](skills/doorloop-lease-onboarding/SKILL.md): folder of lease documents in,
+  review table, then units through Chrome and leases with tenants and rent through `create_lease`.
+- [`doorloop-web-forms`](skills/doorloop-web-forms/SKILL.md): add units or a new property with Claude in
+  Chrome.
+
 ## Roadmap
 
-1. Lease onboarding skill: folder of leases in, reviewed table out. Units go in through Claude in Chrome
-   (one unit at a time, or the new-property wizard for many); tenants and leases through the API.
-2. Past-due skill: list tenants with an `overdueBalance` and draft messages for review.
-3. Task control skill: review open tasks, pick a vendor, create a subtask and work order.
+1. Past-due skill: list tenants with an `overdueBalance` and draft messages for review.
+2. Task control skill: review open tasks, pick a vendor, create a subtask and work order.

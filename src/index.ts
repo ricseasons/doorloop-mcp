@@ -188,6 +188,124 @@ server.registerTool(
   },
 );
 
+listTool("list_accounts", "/accounts", "List chart-of-accounts entries, e.g. to pick the account for a lease charge.");
+
+const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("YYYY-MM-DD");
+const frequency = z
+  .enum(["Daily", "Weekly", "Every2Weeks", "Monthly", "Every2Months", "Quarterly", "Every6Months", "Annually"])
+  .default("Monthly");
+
+type Account = { id: string; defaultAccountFor?: string[] };
+
+// Finds the account DoorLoop marks as the default for a purpose, e.g. RENTAL_INCOME.
+async function defaultAccount(purpose: string): Promise<string> {
+  const { data } = await client.get<{ data: Account[] }>("/accounts", { page_size: 200 });
+  const match = data.find((a) => a.defaultAccountFor?.includes(purpose));
+  if (!match) throw new Error(`No default ${purpose} account in DoorLoop; pass the account id explicitly.`);
+  return match.id;
+}
+
+// Official endpoint: POST /leases/full creates the lease, any new tenants, rent, deposits and charges in
+// one transaction (https://api.doorloop.com/reference/post-leases-full).
+server.registerTool(
+  "create_lease",
+  {
+    description:
+      "Create a lease with its tenants, monthly rent, security deposit and other recurring charges in one " +
+      "step. Tenants can be existing tenant ids or new people. Without confirm=true this only returns the " +
+      "request it would send, so show that to the user and get their OK before confirming.",
+    inputSchema: {
+      property: z.string().describe("Property id"),
+      units: z.array(z.string()).min(1).describe("Unit ids on that property"),
+      term: z.enum(["Fixed", "AtWill"]),
+      start: date,
+      end: date.optional().describe("YYYY-MM-DD. Required for a Fixed term."),
+      rolloverToAtWill: z.boolean().optional().describe("Go month-to-month when the fixed term ends"),
+      tenants: z
+        .array(
+          z.union([
+            z.string().describe("Existing tenant id"),
+            z.object({
+              firstName: z.string(),
+              lastName: z.string(),
+              email: z.string().optional(),
+              phone: z.string().optional(),
+            }),
+          ]),
+        )
+        .min(1),
+      rent: z
+        .object({
+          amount: z.number().positive(),
+          frequency,
+          start: date.optional().describe("First rent due date; sets the due day. Defaults to the lease start."),
+          account: z.string().optional().describe("Defaults to the account DoorLoop uses for rental income"),
+        })
+        .optional(),
+      securityDeposit: z
+        .object({
+          amount: z.number().positive(),
+          date: date.optional().describe("Defaults to the lease start"),
+          account: z.string().optional().describe("Defaults to DoorLoop's security deposit account"),
+        })
+        .optional(),
+      recurringCharges: z
+        .array(
+          z.object({
+            account: z.string().describe("Account id from list_accounts, e.g. Parking or Pet Fees"),
+            amount: z.number().positive(),
+            frequency,
+            start: date,
+            end: date.optional(),
+            memo: z.string().optional(),
+          }),
+        )
+        .optional(),
+      residentPortalAccess: z.boolean().default(false).describe("Invite tenants to the resident portal"),
+      sendWelcomeSms: z.boolean().default(false),
+      automaticLateFees: z.boolean().default(false),
+      confirm: z.boolean().default(false).describe("Actually create it. Leave false to preview."),
+    },
+    annotations: { destructiveHint: false, idempotentHint: false },
+  },
+  async ({ rent, securityDeposit, recurringCharges, confirm, ...lease }) => {
+    if (lease.term === "Fixed" && !lease.end) throw new Error("A Fixed lease needs an end date.");
+
+    const body: Record<string, unknown> = {
+      ...lease,
+      ...(rent && {
+        rent: {
+          frequency: rent.frequency,
+          ...(rent.start && { start: rent.start }),
+          lines: [{ account: rent.account ?? (await defaultAccount("RENTAL_INCOME")), amount: rent.amount }],
+        },
+      }),
+      ...(securityDeposit && {
+        securityDeposits: [
+          {
+            date: securityDeposit.date ?? lease.start,
+            lines: [
+              {
+                account: securityDeposit.account ?? (await defaultAccount("SECURITY_DEPOSIT")),
+                amount: securityDeposit.amount,
+              },
+            ],
+          },
+        ],
+      }),
+      ...(recurringCharges?.length && {
+        recurringCharges: recurringCharges.map(({ account, amount, memo, ...schedule }) => ({
+          ...schedule,
+          lines: [{ account, amount, ...(memo && { memo }) }],
+        })),
+      }),
+    };
+
+    if (!confirm) return json({ preview: true, request: body });
+    return json(await client.post("/leases/full", body));
+  },
+);
+
 // Escape hatch while we map the API: any GET against a DoorLoop path.
 server.registerTool(
   "doorloop_get",

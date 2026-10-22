@@ -95,6 +95,14 @@
       "description": "Create a vendor work order under a task (previews first)"
     },
     {
+      "name": "list_accounts",
+      "description": "List chart-of-accounts entries"
+    },
+    {
+      "name": "create_lease",
+      "description": "Create a lease with tenants, rent and deposit (previews first)"
+    },
+    {
       "name": "doorloop_get",
       "description": "Read-only GET on any DoorLoop path"
     }
