@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { loadApiKey } from "./auth.js";
 import { DoorLoopClient, type Query } from "./client.js";
@@ -94,130 +94,6 @@ server.registerTool(
     annotations: { readOnlyHint: true },
   },
   async (args) => json(await client.get("/reports/rent-roll", args as Query)),
-);
-
-// Placeholder property id the web app sends before the property exists.
-const NEW_PROPERTY_PLACEHOLDER = "507f1f77bcf86cd799439011";
-
-// The public API has no way to create units, so this mirrors the request the
-// DoorLoop web app's "New property" wizard sends (captured 2026-10-22).
-// Undocumented: it may change without notice.
-server.registerTool(
-  "create_property_with_units",
-  {
-    description:
-      "Create a property and its units in one step. Without confirm=true this only returns the " +
-      "request it would send, so show that to the user and get their OK before confirming.",
-    inputSchema: {
-      street1: z.string(),
-      street2: z.string().optional(),
-      city: z.string(),
-      state: z.string().describe("Two-letter state code"),
-      zip: z.string(),
-      country: z.string().default("United States"),
-      type: z
-        .string()
-        .default("RESIDENTIAL_MULTI_FAMILY")
-        .describe("DoorLoop property type; RESIDENTIAL_MULTI_FAMILY is the only value confirmed so far"),
-      units: z
-        .array(
-          z.object({
-            name: z.string().describe('Unit name, e.g. "Apt 1"'),
-            beds: z.number().optional(),
-            baths: z.number().optional(),
-            size: z.number().optional().describe("Square feet"),
-            marketRent: z.number().optional().describe("Listing / market rent per month"),
-          }),
-        )
-        .min(1),
-      confirm: z.boolean().default(false).describe("Actually create it. Leave false to preview."),
-    },
-    annotations: { destructiveHint: false, idempotentHint: false },
-  },
-  async ({ street1, street2, city, state, zip, country, type, units, confirm }) => {
-    const body = {
-      property: {
-        active: true,
-        address: {
-          street1,
-          ...(street2 && { street2 }),
-          city,
-          state,
-          zip,
-          country,
-          shouldValidateStateAndCountry: true,
-          acceptInvalidAddress: true,
-        },
-        numActiveUnits: 0,
-        type,
-        owners: [],
-      },
-      units: units.map((u) => ({
-        active: true,
-        addressSameAsProperty: true,
-        rentalApplicationListing: { activeListing: true },
-        id: randomUUID(),
-        property: NEW_PROPERTY_PLACEHOLDER,
-        ...u,
-      })),
-      specifyAccounts: "default",
-      specifySecurityDeposit: "",
-      reserveFundsEnabled: "DISABLED",
-      invalidUnitsName: false,
-      propertyOwnershipEnabled: "DISABLED",
-    };
-
-    if (!confirm) return json({ preview: true, request: body });
-    return json(await client.post("/properties/create-property-wizard/", body));
-  },
-);
-
-// Mirrors the web app's "Add new unit" form (captured 2026-10-22). Undocumented.
-server.registerTool(
-  "create_unit",
-  {
-    description:
-      "Add a unit to an existing property. Without confirm=true this only returns the request it " +
-      "would send, so show that to the user and get their OK before confirming.",
-    inputSchema: {
-      property: z.string().describe("Property id"),
-      name: z.string().describe('Unit name, e.g. "Unit 3"'),
-      beds: z.number().optional(),
-      baths: z.number().optional(),
-      size: z.number().optional().describe("Square feet"),
-      marketRent: z.number().optional().describe("Listing / market rent per month"),
-      description: z.string().max(1000).optional(),
-      address: z
-        .object({
-          street1: z.string(),
-          street2: z.string().optional(),
-          city: z.string(),
-          state: z.string().describe("Two-letter state code"),
-          zip: z.string(),
-          country: z.string().default("United States"),
-        })
-        .optional()
-        .describe("Only when the unit's address differs from the property's"),
-      confirm: z.boolean().default(false).describe("Actually create it. Leave false to preview."),
-    },
-    annotations: { destructiveHint: false, idempotentHint: false },
-  },
-  async ({ confirm, address, ...unit }) => {
-    const body = {
-      active: true,
-      addressSameAsProperty: !address,
-      rentalApplicationListing: { activeListing: true },
-      pictures: [],
-      listing: { leaseTermsActive: false },
-      amenities: [],
-      disablePersonDetailsValidation: false,
-      ...unit,
-      ...(address && { address: { shouldValidateStateAndCountry: true, ...address } }),
-    };
-
-    if (!confirm) return json({ preview: true, request: body });
-    return json(await client.post("/units/", body));
-  },
 );
 
 // Mirrors the web app's new task / new subtask form (captured 2026-10-22). Undocumented.

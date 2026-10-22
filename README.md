@@ -44,7 +44,7 @@ claude mcp add doorloop -- node "$(pwd)/dist/index.js"
 
 ## Tools
 
-Read tools, plus one write tool that previews before it creates anything:
+Read tools, plus write tools that preview before they create anything:
 
 | Tool | What it does |
 | --- | --- |
@@ -56,8 +56,6 @@ Read tools, plus one write tool that previews before it creates anything:
 | `list_tasks`, `get_task` | Tasks and work orders, by status or property |
 | `list_vendors`, `get_vendor` | Vendors |
 | `get_rent_roll` | Rent roll report with balances |
-| `create_property_with_units` | Creates a property and its units in one step. Returns a preview unless `confirm` is true. |
-| `create_unit` | Adds a unit to an existing property, optionally with its own address. Returns a preview unless `confirm` is true. |
 | `create_task` | Creates an internal task, or a subtask when given `parentTask`. Returns a preview unless `confirm` is true. |
 | `create_work_order` | Creates a vendor work order as a subtask of a task, and can email the vendor. Returns a preview unless `confirm` is true. |
 | `doorloop_get` | Any GET path, for exploring endpoints we haven't wrapped yet |
@@ -66,21 +64,23 @@ Requests are throttled to stay under DoorLoop's ~50 requests/minute limit, and 4
 
 ## Undocumented endpoints
 
-DoorLoop's public API can't create units, subtasks or work orders, so these tools send the same requests as the
-web app:
+DoorLoop's public API docs don't cover subtasks or work orders, so these tools send the same requests as
+the web app's forms, to the official `POST /api/tasks/` endpoint:
 
-- `create_property_with_units`: `POST /api/properties/create-property-wizard/` (New property wizard)
-- `create_unit`: `POST /api/units/` (Add new unit form)
 - `create_task`: `POST /api/tasks/` with `type: INTERNAL_TASK` (new task / subtask form)
 - `create_work_order`: `POST /api/tasks/` with `type: WORK_ORDER` (a task's New work order form)
 
-None of these are documented, so they may change, and we still need to confirm they accept an API key
-rather than only a browser login.
+Both were tested with an API key on 2026-10-22 and work. The extra fields aren't documented, so they may
+change.
+
+**Units can't be created with an API key.** The web app's `POST /api/units/` and
+`POST /api/properties/create-property-wizard/` return `405 Access Denied` for API keys. Add one-off units
+through the web app (Claude in Chrome can fill the form), and use DoorLoop's unit import for larger
+properties.
 
 ## Roadmap
 
-1. Verify against a real account: unit creation, lease charges, and how past-due balances are exposed.
-2. Write tools (property, unit, tenant, `leases/full`, rent charges) with a preview mode that shows the
-   exact payload before anything is created.
-3. Lease onboarding skill: folder of leases in, reviewed table, then records created.
-4. Past-due skill: list late tenants and draft messages for review.
+1. Lease onboarding skill: folder of leases in, reviewed table out. Units go in through Claude in Chrome
+   (one-offs) or a DoorLoop import spreadsheet (larger properties); tenants and leases through the API.
+2. Past-due skill: list tenants with an `overdueBalance` and draft messages for review.
+3. Task control skill: review open tasks, pick a vendor, create a subtask and work order.

@@ -87,14 +87,6 @@
       "description": "Get one vendor"
     },
     {
-      "name": "create_property_with_units",
-      "description": "Create a property and its units (previews first)"
-    },
-    {
-      "name": "create_unit",
-      "description": "Add a unit to an existing property (previews first)"
-    },
-    {
       "name": "create_task",
       "description": "Create a task or subtask (previews first)"
     },
