@@ -58,6 +58,7 @@ Read tools, plus one write tool that previews before it creates anything:
 | `get_rent_roll` | Rent roll report with balances |
 | `create_property_with_units` | Creates a property and its units in one step. Returns a preview unless `confirm` is true. |
 | `create_unit` | Adds a unit to an existing property, optionally with its own address. Returns a preview unless `confirm` is true. |
+| `create_task` | Creates an internal task, or a subtask when given `parentTask`. Returns a preview unless `confirm` is true. |
 | `create_work_order` | Creates a vendor work order as a subtask of a task, and can email the vendor. Returns a preview unless `confirm` is true. |
 | `doorloop_get` | Any GET path, for exploring endpoints we haven't wrapped yet |
 
@@ -65,12 +66,13 @@ Requests are throttled to stay under DoorLoop's ~50 requests/minute limit, and 4
 
 ## Undocumented endpoints
 
-DoorLoop's public API can't create units or work orders, so these tools send the same requests as the
+DoorLoop's public API can't create units, subtasks or work orders, so these tools send the same requests as the
 web app:
 
 - `create_property_with_units`: `POST /api/properties/create-property-wizard/` (New property wizard)
 - `create_unit`: `POST /api/units/` (Add new unit form)
-- `create_work_order`: `POST /api/tasks/` (a task's New work order form)
+- `create_task`: `POST /api/tasks/` with `type: INTERNAL_TASK` (new task / subtask form)
+- `create_work_order`: `POST /api/tasks/` with `type: WORK_ORDER` (a task's New work order form)
 
 None of these are documented, so they may change, and we still need to confirm they accept an API key
 rather than only a browser login.

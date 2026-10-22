@@ -220,6 +220,48 @@ server.registerTool(
   },
 );
 
+// Mirrors the web app's new task / new subtask form (captured 2026-10-22). Undocumented.
+server.registerTool(
+  "create_task",
+  {
+    description:
+      "Create an internal task, or a subtask when parentTask is given. Without confirm=true this " +
+      "only returns the request it would send, so show that to the user and get their OK first.",
+    inputSchema: {
+      subject: z.string(),
+      description: z.string().optional(),
+      parentTask: z.string().optional().describe("Id of the parent task, to create this as its subtask"),
+      priority: z.string().default("MEDIUM").describe("e.g. LOW, MEDIUM, HIGH"),
+      dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("YYYY-MM-DD"),
+      assignedToUsers: z
+        .array(z.string())
+        .optional()
+        .describe("DoorLoop user ids to assign. Defaults to the API key's user."),
+      notifyAssignees: z.boolean().default(true),
+      confirm: z.boolean().default(false).describe("Actually create it. Leave false to preview."),
+    },
+    annotations: { destructiveHint: false, idempotentHint: false },
+  },
+  async ({ parentTask, assignedToUsers, confirm, ...rest }) => {
+    const body: Record<string, unknown> = {
+      type: "INTERNAL_TASK",
+      dateType: "DATE",
+      reference: randomBytes(3).toString("hex"),
+      status: "NOT_STARTED",
+      ...(parentTask && { linkedResource: { resourceId: parentTask, resourceType: "TASK" } }),
+      ...rest,
+    };
+
+    if (!confirm) {
+      return json({ preview: true, note: "requestedByUser is filled in from the API key on confirm", request: body });
+    }
+    const me = await client.get<{ id: string }>("/users/me");
+    body.requestedByUser = me.id;
+    body.assignedToUsers = assignedToUsers ?? [me.id];
+    return json(await client.post("/tasks/", body));
+  },
+);
+
 // Mirrors the web app's "New work order" form on a task (captured 2026-10-22). Undocumented.
 server.registerTool(
   "create_work_order",
