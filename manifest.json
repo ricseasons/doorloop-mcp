@@ -103,6 +103,10 @@
       "description": "Create a lease with tenants, rent and deposit (previews first)"
     },
     {
+      "name": "create_lease_charge",
+      "description": "Post a one-time charge on a lease (previews first)"
+    },
+    {
       "name": "doorloop_get",
       "description": "Read-only GET on any DoorLoop path"
     }

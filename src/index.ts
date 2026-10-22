@@ -195,12 +195,24 @@ const frequency = z
   .enum(["Daily", "Weekly", "Every2Weeks", "Monthly", "Every2Months", "Quarterly", "Every6Months", "Annually"])
   .default("Monthly");
 
-type Account = { id: string; defaultAccountFor?: string[] };
+type Account = { id: string; name: string; class?: string; defaultAccountFor?: string[] };
+
+// Reads the whole chart of accounts; the API returns at most 100 per page.
+async function allAccounts(): Promise<Account[]> {
+  const accounts: Account[] = [];
+  for (let page = 1; ; page++) {
+    const { data, total } = await client.get<{ data: Account[]; total: number }>("/accounts", {
+      page_size: 100,
+      page_number: page,
+    });
+    accounts.push(...data);
+    if (!data.length || accounts.length >= total) return accounts;
+  }
+}
 
 // Finds the account DoorLoop marks as the default for a purpose, e.g. RENTAL_INCOME.
 async function defaultAccount(purpose: string): Promise<string> {
-  const { data } = await client.get<{ data: Account[] }>("/accounts", { page_size: 200 });
-  const match = data.find((a) => a.defaultAccountFor?.includes(purpose));
+  const match = (await allAccounts()).find((a) => a.defaultAccountFor?.includes(purpose));
   if (!match) throw new Error(`No default ${purpose} account in DoorLoop; pass the account id explicitly.`);
   return match.id;
 }
@@ -303,6 +315,64 @@ server.registerTool(
 
     if (!confirm) return json({ preview: true, request: body });
     return json(await client.post("/leases/full", body));
+  },
+);
+
+// Official endpoint: POST /lease-charges (https://api.doorloop.com/reference/post-lease-charge).
+server.registerTool(
+  "create_lease_charge",
+  {
+    description:
+      "Post a one-time charge on a lease, e.g. a returned-check fee, cleaning fee or repair. Accounts can " +
+      "be given by id or by name (e.g. \"Cleaning Fee\"). Without confirm=true this only returns the " +
+      "request it would send, with account names and the total, so show that to the user and get their " +
+      "OK before confirming.",
+    inputSchema: {
+      lease: z.string().describe("Lease id"),
+      date: date.optional().describe("YYYY-MM-DD charge date. Defaults to today."),
+      memo: z.string().max(1000).optional(),
+      lines: z
+        .array(
+          z.object({
+            account: z.string().describe("Account id, or its exact name from list_accounts"),
+            amount: z.number().positive(),
+            memo: z.string().max(1000).optional(),
+          }),
+        )
+        .min(1),
+      confirm: z.boolean().default(false).describe("Actually post it. Leave false to preview."),
+    },
+    annotations: { destructiveHint: false, idempotentHint: false },
+  },
+  async ({ lease, date: chargeDate, memo, lines, confirm }) => {
+    const accounts = await allAccounts();
+    const resolved = lines.map((line) => {
+      const key = line.account.trim().toLowerCase();
+      const matches = accounts.filter((a) => a.id === line.account || a.name.trim().toLowerCase() === key);
+      if (matches.length !== 1) {
+        throw new Error(
+          `${matches.length ? "Several" : "No"} accounts match "${line.account}"; pass the account id from list_accounts.`,
+        );
+      }
+      return { ...line, account: matches[0].id, accountName: matches[0].name, accountClass: matches[0].class };
+    });
+
+    const body = {
+      lease,
+      date: chargeDate ?? new Date().toLocaleDateString("en-CA"),
+      ...(memo && { memo }),
+      lines: resolved.map(({ account, amount, memo }) => ({ account, amount, ...(memo && { memo }) })),
+    };
+
+    if (!confirm) {
+      return json({
+        preview: true,
+        total: resolved.reduce((sum, l) => sum + l.amount, 0),
+        accounts: resolved.map(({ accountName, accountClass, amount }) => ({ accountName, accountClass, amount })),
+        request: body,
+      });
+    }
+    return json(await client.post("/lease-charges", body));
   },
 );
 

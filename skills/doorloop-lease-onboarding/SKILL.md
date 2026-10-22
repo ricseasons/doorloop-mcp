@@ -45,7 +45,9 @@ Don't guess. If something isn't in the document, leave it blank and flag it.
 Only put a charge in **Other recurring charges** if the lease says the tenant pays it every period from
 the start. A charge that depends on something ("$25/month pet rent once a pet is approved") goes in the
 notes column and is flagged; ask whether it applies before adding it. Penalty fees (late, cleaning,
-returned check) are never set up as charges here.
+returned check) are never set up as charges here. Tell the person that when one actually applies, it
+goes on the lease as a one-time charge with `create_lease_charge` (e.g. "charge Apt 2 a $25
+returned-check fee").
 
 ## 3. Show one review table
 

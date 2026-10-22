@@ -60,6 +60,7 @@ Read tools, plus write tools that preview before they create anything:
 | `create_work_order` | Creates a vendor work order as a subtask of a task, and can email the vendor. Returns a preview unless `confirm` is true. |
 | `list_accounts` | Chart of accounts, e.g. to pick the account for a parking or pet charge |
 | `create_lease` | Creates a lease with new or existing tenants, rent, security deposit and recurring charges in one transaction (official `POST /leases/full`). Rent and deposit use DoorLoop's default accounts unless given. Portal invite, welcome SMS and late fees are off unless asked. Returns a preview unless `confirm` is true. |
+| `create_lease_charge` | Posts a one-time charge on a lease, e.g. a returned-check or cleaning fee (official `POST /lease-charges`). Accounts by id or name. Returns a preview with account names and the total unless `confirm` is true. |
 | `doorloop_get` | Any GET path, for exploring endpoints we haven't wrapped yet |
 
 Requests are throttled to stay under DoorLoop's ~50 requests/minute limit, and 429s are retried.
@@ -88,6 +89,9 @@ Setting up Claude in Chrome (Mac and Windows) is covered step by step in
 
 - [`doorloop-lease-onboarding`](skills/doorloop-lease-onboarding/SKILL.md): folder of lease documents in,
   review table, then units through Chrome and leases with tenants and rent through `create_lease`.
+  Conditional fees (cleaning, returned check, pet rent once approved) aren't set up as recurring
+  charges; they're posted when they apply with `create_lease_charge`. Automatic late fees can be turned
+  on per lease (`automaticLateFees`); DoorLoop then uses its own late-fee settings.
 - [`doorloop-web-forms`](skills/doorloop-web-forms/SKILL.md): add units or a new property with Claude in
   Chrome.
 
