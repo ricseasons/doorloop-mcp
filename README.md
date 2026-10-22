@@ -90,8 +90,11 @@ Setting up Claude in Chrome (Mac and Windows) is covered step by step in
 - [`doorloop-lease-onboarding`](skills/doorloop-lease-onboarding/SKILL.md): folder of lease documents in,
   review table, then units through Chrome and leases with tenants and rent through `create_lease`.
   Conditional fees (cleaning, returned check, pet rent once approved) aren't set up as recurring
-  charges; they're posted when they apply with `create_lease_charge`. Automatic late fees can be turned
-  on per lease (`automaticLateFees`); DoorLoop then uses its own late-fee settings.
+  charges; they're posted when they apply with `create_lease_charge`.
+
+**Late fees follow DoorLoop's settings.** Leases created by the onboarding skill have automatic late fees
+on, and DoorLoop charges them by its own late-fee schedule (Settings > Company defaults > Fees > Late
+fees), not by the amounts written in the lease. The API can't set per-lease late-fee amounts.
 - [`doorloop-web-forms`](skills/doorloop-web-forms/SKILL.md): add units or a new property with Claude in
   Chrome.
 
