@@ -28,7 +28,24 @@ export class DoorLoopClient {
     return this.request<T>("POST", path, undefined, body);
   }
 
+  // Downloads a file (e.g. /files/<id>/download) as raw bytes.
+  async download(path: string): Promise<{ data: Buffer; contentType: string }> {
+    const res = await this.send("GET", path, undefined, undefined, "*/*");
+    if (!res.ok) throw new DoorLoopError(res.status, await res.text());
+    return {
+      data: Buffer.from(await res.arrayBuffer()),
+      contentType: res.headers.get("content-type") ?? "application/octet-stream",
+    };
+  }
+
   private async request<T>(method: string, path: string, query?: Query, body?: unknown): Promise<T> {
+    const res = await this.send(method, path, query, body, "application/json");
+    const text = await res.text();
+    if (!res.ok) throw new DoorLoopError(res.status, text);
+    return (text ? JSON.parse(text) : undefined) as T;
+  }
+
+  private async send(method: string, path: string, query: Query | undefined, body: unknown, accept: string) {
     const url = new URL(BASE_URL.replace(/\/$/, "") + "/" + path.replace(/^\//, ""));
     for (const [k, v] of Object.entries(query ?? {})) {
       if (v !== undefined) url.searchParams.set(k, String(v));
@@ -40,7 +57,7 @@ export class DoorLoopClient {
         method,
         headers: {
           Authorization: `bearer ${this.apiKey}`,
-          Accept: "application/json",
+          Accept: accept,
           ...(body !== undefined && { "Content-Type": "application/json" }),
         },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -51,10 +68,7 @@ export class DoorLoopClient {
         await sleep(retryAfter * 1000);
         continue;
       }
-
-      const text = await res.text();
-      if (!res.ok) throw new DoorLoopError(res.status, text);
-      return (text ? JSON.parse(text) : undefined) as T;
+      return res;
     }
   }
 

@@ -79,6 +79,14 @@
       "description": "Get one task"
     },
     {
+      "name": "list_task_children",
+      "description": "List a task's subtasks and work orders"
+    },
+    {
+      "name": "get_task_files",
+      "description": "List a task's files and return its photos"
+    },
+    {
       "name": "list_vendors",
       "description": "List vendors"
     },

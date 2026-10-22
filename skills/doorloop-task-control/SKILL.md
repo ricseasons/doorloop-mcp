@@ -8,22 +8,33 @@ description: Review open DoorLoop tasks, rank them by severity, propose the righ
 Goal: find the tasks that need attention, agree on the most serious ones with the person, and dispatch a
 vendor for each. Nothing is created and nobody is notified until the person says yes to a preview.
 
-Tools: the `doorloop` MCP server (`list_tasks`, `get_task`, `list_vendors`, `get_vendor`, `list_properties`,
-`get_unit`, `get_tenant`, `create_task`, `create_work_order`).
+Tools: the `doorloop` MCP server (`list_tasks`, `get_task`, `list_task_children`, `get_task_files`,
+`list_vendors`, `get_vendor`, `list_properties`, `get_unit`, `get_tenant`, `create_task`,
+`create_work_order`).
+
+Task fields (as DoorLoop returns them): `subject`, `description`, `type` (`TENANT_REQUEST`,
+`INTERNAL_TASK`, `WORK_ORDER`), `status` (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`), `priority`
+(`LOW`, `MEDIUM`, `HIGH`), `dueDate` (often missing), `property`, `unit`, `requestedByTenant`,
+`assignedToUsers`, `entryPermission` and `entryNotes`, `tenantRequestType` (`MAINTENANCE`, `GENERAL`),
+`aiSummaryTitle` / `aiSummaryContent` (DoorLoop's own summary, when present), and `linkedResource` (for a
+subtask or work order, the parent task). A work order also has `workOrder.assignedToVendor`.
 
 ## 1. Collect the open tasks
 
-- `list_tasks` with `filter_status=NOT_STARTED`, then `list_tasks` again without a status filter and keep any
-  task whose `dueDate` is before today and whose status isn't COMPLETED. Page through every result.
-- Drop work orders (`type: WORK_ORDER`) from the list; they are children of a task, not tasks to triage.
-  Do use them to tell whether a task already has a vendor: a task counts as **unassigned** when it has no
-  assigned users and no linked work order with a vendor.
+- `list_tasks` with `filter_status=NOT_STARTED` (page through all), plus overdue ones: `list_tasks` with
+  `filter_dueDate_to` = yesterday, keeping the ones whose status isn't `COMPLETED`.
+- Drop `WORK_ORDER` and any task whose `linkedResource.resourceType` is `TASK`; those are children of a
+  task, not tasks to triage.
+- For each remaining task, `list_task_children` shows its subtasks and work orders. A task counts as
+  **unassigned** when no open work order under it has a vendor. Mention existing open work orders: don't
+  dispatch the same job twice.
 - If the person names a property, filter to it (`filter_property`).
 
 ## 2. Rank by severity
 
-Read each task's subject, description, type, priority, property and unit, and look at any pictures attached
-to it. Give each task a level:
+Read each task's subject, description (and `aiSummaryContent`), type, priority, property and unit, and
+look at its pictures with `get_task_files` (tenant photos are files attached to the task; it returns up to
+4 images). Give each task a level:
 
 | Level | Examples |
 | --- | --- |
@@ -46,13 +57,19 @@ top, and let the person reorder, skip, or change a level.
 
 For the task being discussed, `list_vendors` (page through all) and score candidates in this order:
 
-1. Serves the task's property (the vendor's properties list).
-2. Notes that fit the job (trade, specialties, "emergency calls", "preferred for X", "do not use").
-3. Trade or category fields, company name, and any other vendor field that points at the work.
-4. Past work orders on the same property or for the same kind of problem.
+1. Serves the task's property: the task's `property` id is in the vendor's `properties` list. (Only some
+   vendors have properties set, so a vendor without any isn't ruled out.)
+2. `notes` that fit the job (trade, specialties, "emergency calls", "preferred for X", "do not use").
+3. `name` / `companyName` / `jobTitle` and `services` that point at the trade (e.g. "Pest Control",
+   "Plumbing", "Heating & Air").
+4. Location: the vendor's `primaryAddress` city and state against the property's.
+5. Past work: `list_tasks` with `filter_type=WORK_ORDER`, then match
+   `workOrder.assignedToVendor` (DoorLoop ignores a vendor filter there) on the same property or the same
+   kind of problem.
 
-Skip vendors that are inactive or whose notes say not to use them. Propose one vendor with the reasons, plus
-up to two backups. The person confirms or picks another.
+Skip vendors with `active: false` and those whose notes say not to use them. Utilities, lenders and other
+non-trade payees in the vendor list are never candidates. Propose one vendor with the reasons, plus up to
+two backups. The person confirms or picks another.
 
 ## 5. Preview, then create
 

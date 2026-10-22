@@ -76,8 +76,73 @@ getTool("get_lease", "/leases", "Get one lease by id.");
 listTool("list_tasks", "/tasks", "List tasks (maintenance requests, to-dos, work orders).", {
   filter_status: z.string().optional().describe("Task status to filter by, e.g. NOT_STARTED, IN_PROGRESS"),
   filter_property: z.string().optional().describe("Property id to filter by"),
+  filter_type: z.string().optional().describe("TENANT_REQUEST, INTERNAL_TASK or WORK_ORDER"),
+  filter_dueDate_to: z.string().optional().describe("YYYY-MM-DD; only tasks due on or before this date"),
 });
 getTool("get_task", "/tasks", "Get one task by id.");
+
+// DoorLoop ignores filters on /files, so read every page and filter here.
+async function filesFor(resourceId: string) {
+  type File = { id: string; name: string; mimeType?: string; size?: number; linkedResource?: { resourceId: string } };
+  const files: File[] = [];
+  for (let page = 1; ; page++) {
+    const { data, total } = await client.get<{ data: File[]; total: number }>("/files", {
+      page_size: 100,
+      page_number: page,
+    });
+    files.push(...data.filter((f) => f.linkedResource?.resourceId === resourceId));
+    if (!data.length || page * 100 >= total) return files;
+  }
+}
+
+server.registerTool(
+  "list_task_children",
+  {
+    description: "List a task's subtasks and work orders (tasks linked to it as their parent).",
+    inputSchema: { task: z.string().describe("Parent task id") },
+    annotations: { readOnlyHint: true },
+  },
+  async ({ task }) =>
+    json(
+      await client.get("/tasks", {
+        filter_linkedResourceId: task,
+        filter_linkedResourceType: "TASK",
+        page_size: 100,
+      }),
+    ),
+);
+
+server.registerTool(
+  "get_task_files",
+  {
+    description:
+      "List the files attached to a task (e.g. photos a tenant uploaded) and return its images so they " +
+      "can be looked at. Up to max_images images are returned; other files are listed by name.",
+    inputSchema: {
+      task: z.string().describe("Task id"),
+      max_images: z.number().int().min(0).max(10).default(4),
+    },
+    annotations: { readOnlyHint: true },
+  },
+  async ({ task, max_images }) => {
+    const files = await filesFor(task);
+    const content: ({ type: "text"; text: string } | { type: "image"; data: string; mimeType: string })[] = [
+      {
+        type: "text",
+        text: JSON.stringify(
+          files.map(({ id, name, mimeType, size }) => ({ id, name, mimeType, size })),
+          null,
+          2,
+        ),
+      },
+    ];
+    for (const f of files.filter((f) => f.mimeType?.startsWith("image/")).slice(0, max_images)) {
+      const { data, contentType } = await client.download(`/files/${encodeURIComponent(f.id)}/download`);
+      content.push({ type: "image", data: data.toString("base64"), mimeType: contentType.split(";")[0] });
+    }
+    return { content };
+  },
+);
 
 listTool("list_vendors", "/vendors", "List vendors, e.g. to find one suited to a maintenance task.", {
   filter_text: z.string().optional().describe("Free-text search on vendor name or details"),

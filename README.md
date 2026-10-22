@@ -54,6 +54,8 @@ Read tools, plus write tools that preview before they create anything:
 | `list_tenants`, `get_tenant` | Tenants, with text search |
 | `list_leases`, `get_lease` | Leases, optionally by property or unit |
 | `list_tasks`, `get_task` | Tasks and work orders, by status or property |
+| `list_task_children` | A task's subtasks and work orders |
+| `get_task_files` | Files attached to a task, with its photos returned as images |
 | `list_vendors`, `get_vendor` | Vendors |
 | `get_rent_roll` | Rent roll report with balances |
 | `create_task` | Creates an internal task, or a subtask when given `parentTask`. Returns a preview unless `confirm` is true. |
