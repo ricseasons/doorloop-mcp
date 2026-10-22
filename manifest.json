@@ -95,6 +95,10 @@
       "description": "Add a unit to an existing property (previews first)"
     },
     {
+      "name": "create_work_order",
+      "description": "Create a vendor work order under a task (previews first)"
+    },
+    {
       "name": "doorloop_get",
       "description": "Read-only GET on any DoorLoop path"
     }
