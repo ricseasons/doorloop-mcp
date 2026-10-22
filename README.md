@@ -55,7 +55,7 @@ Read tools, plus one write tool that previews before it creates anything:
 | `list_leases`, `get_lease` | Leases, optionally by property or unit |
 | `get_rent_roll` | Rent roll report with balances |
 | `create_property_with_units` | Creates a property and its units in one step. Returns a preview unless `confirm` is true. |
-| `create_unit` | Adds a unit to an existing property. Returns a preview unless `confirm` is true. |
+| `create_unit` | Adds a unit to an existing property, optionally with its own address. Returns a preview unless `confirm` is true. |
 | `doorloop_get` | Any GET path, for exploring endpoints we haven't wrapped yet |
 
 Requests are throttled to stay under DoorLoop's ~50 requests/minute limit, and 429s are retried.

@@ -176,20 +176,32 @@ server.registerTool(
       size: z.number().optional().describe("Square feet"),
       marketRent: z.number().optional().describe("Listing / market rent per month"),
       description: z.string().max(1000).optional(),
+      address: z
+        .object({
+          street1: z.string(),
+          street2: z.string().optional(),
+          city: z.string(),
+          state: z.string().describe("Two-letter state code"),
+          zip: z.string(),
+          country: z.string().default("United States"),
+        })
+        .optional()
+        .describe("Only when the unit's address differs from the property's"),
       confirm: z.boolean().default(false).describe("Actually create it. Leave false to preview."),
     },
     annotations: { destructiveHint: false, idempotentHint: false },
   },
-  async ({ confirm, ...unit }) => {
+  async ({ confirm, address, ...unit }) => {
     const body = {
       active: true,
-      addressSameAsProperty: true,
+      addressSameAsProperty: !address,
       rentalApplicationListing: { activeListing: true },
       pictures: [],
       listing: { leaseTermsActive: false },
       amenities: [],
       disablePersonDetailsValidation: false,
       ...unit,
+      ...(address && { address: { shouldValidateStateAndCountry: true, ...address } }),
     };
 
     if (!confirm) return json({ preview: true, request: body });
