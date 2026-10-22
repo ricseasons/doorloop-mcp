@@ -74,13 +74,17 @@ Both were tested with an API key on 2026-10-22 and work. The extra fields aren't
 change.
 
 **Units can't be created with an API key.** The web app's `POST /api/units/` and
-`POST /api/properties/create-property-wizard/` return `405 Access Denied` for API keys. Add one-off units
-through the web app (Claude in Chrome can fill the form), and use DoorLoop's unit import for larger
-properties.
+`POST /api/properties/create-property-wizard/` return `405 Access Denied` for API keys. The
+[`doorloop-web-forms` skill](skills/doorloop-web-forms/SKILL.md) adds units and new properties through
+the web app's forms with Claude in Chrome. DoorLoop has no self-serve unit import; for a large batch,
+ask DoorLoop support to import a spreadsheet.
+
+Setting up Claude in Chrome (Mac and Windows) is covered step by step in
+[skills/doorloop-web-forms/SETUP.md](skills/doorloop-web-forms/SETUP.md).
 
 ## Roadmap
 
 1. Lease onboarding skill: folder of leases in, reviewed table out. Units go in through Claude in Chrome
-   (one-offs) or a DoorLoop import spreadsheet (larger properties); tenants and leases through the API.
+   (one unit at a time, or the new-property wizard for many); tenants and leases through the API.
 2. Past-due skill: list tenants with an `overdueBalance` and draft messages for review.
 3. Task control skill: review open tasks, pick a vendor, create a subtask and work order.
