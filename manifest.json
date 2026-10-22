@@ -71,6 +71,22 @@
       "description": "Rent roll with balances"
     },
     {
+      "name": "list_tasks",
+      "description": "List tasks"
+    },
+    {
+      "name": "get_task",
+      "description": "Get one task"
+    },
+    {
+      "name": "list_vendors",
+      "description": "List vendors"
+    },
+    {
+      "name": "get_vendor",
+      "description": "Get one vendor"
+    },
+    {
       "name": "create_property_with_units",
       "description": "Create a property and its units (previews first)"
     },

@@ -53,6 +53,8 @@ Read tools, plus one write tool that previews before it creates anything:
 | `list_units`, `get_unit` | Units, optionally by property |
 | `list_tenants`, `get_tenant` | Tenants, with text search |
 | `list_leases`, `get_lease` | Leases, optionally by property or unit |
+| `list_tasks`, `get_task` | Tasks and work orders, by status or property |
+| `list_vendors`, `get_vendor` | Vendors |
 | `get_rent_roll` | Rent roll report with balances |
 | `create_property_with_units` | Creates a property and its units in one step. Returns a preview unless `confirm` is true. |
 | `create_unit` | Adds a unit to an existing property, optionally with its own address. Returns a preview unless `confirm` is true. |

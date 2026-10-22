@@ -73,6 +73,17 @@ listTool("list_leases", "/leases", "List leases, optionally filtered to a proper
 });
 getTool("get_lease", "/leases", "Get one lease by id.");
 
+listTool("list_tasks", "/tasks", "List tasks (maintenance requests, to-dos, work orders).", {
+  filter_status: z.string().optional().describe("Task status to filter by, e.g. NOT_STARTED, IN_PROGRESS"),
+  filter_property: z.string().optional().describe("Property id to filter by"),
+});
+getTool("get_task", "/tasks", "Get one task by id.");
+
+listTool("list_vendors", "/vendors", "List vendors, e.g. to find one suited to a maintenance task.", {
+  filter_text: z.string().optional().describe("Free-text search on vendor name or details"),
+});
+getTool("get_vendor", "/vendors", "Get one vendor by id.");
+
 server.registerTool(
   "get_rent_roll",
   {
