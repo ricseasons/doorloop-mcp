@@ -98,6 +98,15 @@ fees), not by the amounts written in the lease. The API can't set per-lease late
 - [`doorloop-web-forms`](skills/doorloop-web-forms/SKILL.md): add units or a new property with Claude in
   Chrome.
 
+## Open items (paused 2026-10-22)
+
+- Create the test lease on 7307 Reservation Drive, Apt 2 from `test-fixtures/test-lease-7307-apt2.pdf`
+  (preview done; waiting on Rico's go-ahead), then check it on the rent roll.
+- Test `create_lease_charge` for real on that test lease (only previews so far).
+- Use the `doorloop-web-forms` skill to actually save a unit once (forms mapped, nothing saved yet).
+- Confirm the landlord name on the test lease: Speights LLC, or James Speights.
+- Delete the test subtask `6ad99fdfa862267e62cdefa4` and work order `6ad9a13215c7a7215609a1cf` in DoorLoop.
+
 ## Roadmap
 
 1. Past-due skill: list tenants with an `overdueBalance` and draft messages for review.
