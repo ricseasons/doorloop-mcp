@@ -65,11 +65,15 @@ Requests are throttled to stay under DoorLoop's ~50 requests/minute limit, and 4
 
 ## Undocumented endpoints
 
-DoorLoop's public API can't create units. `create_property_with_units` uses
-`POST /api/properties/create-property-wizard/` (the New property wizard), and `create_unit` uses
-`POST /api/units/` (the Add new unit form), and `create_work_order` uses `POST /api/tasks/` (a task's
-New work order form). None of these are documented, so they may change, and we still
-need to confirm they accept an API key rather than only a browser login.
+DoorLoop's public API can't create units or work orders, so these tools send the same requests as the
+web app:
+
+- `create_property_with_units`: `POST /api/properties/create-property-wizard/` (New property wizard)
+- `create_unit`: `POST /api/units/` (Add new unit form)
+- `create_work_order`: `POST /api/tasks/` (a task's New work order form)
+
+None of these are documented, so they may change, and we still need to confirm they accept an API key
+rather than only a browser login.
 
 ## Roadmap
 
