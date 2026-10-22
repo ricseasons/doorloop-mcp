@@ -161,6 +161,42 @@ server.registerTool(
   },
 );
 
+// Mirrors the web app's "Add new unit" form (captured 2026-10-22). Undocumented.
+server.registerTool(
+  "create_unit",
+  {
+    description:
+      "Add a unit to an existing property. Without confirm=true this only returns the request it " +
+      "would send, so show that to the user and get their OK before confirming.",
+    inputSchema: {
+      property: z.string().describe("Property id"),
+      name: z.string().describe('Unit name, e.g. "Unit 3"'),
+      beds: z.number().optional(),
+      baths: z.number().optional(),
+      size: z.number().optional().describe("Square feet"),
+      marketRent: z.number().optional().describe("Listing / market rent per month"),
+      description: z.string().max(1000).optional(),
+      confirm: z.boolean().default(false).describe("Actually create it. Leave false to preview."),
+    },
+    annotations: { destructiveHint: false, idempotentHint: false },
+  },
+  async ({ confirm, ...unit }) => {
+    const body = {
+      active: true,
+      addressSameAsProperty: true,
+      rentalApplicationListing: { activeListing: true },
+      pictures: [],
+      listing: { leaseTermsActive: false },
+      amenities: [],
+      disablePersonDetailsValidation: false,
+      ...unit,
+    };
+
+    if (!confirm) return json({ preview: true, request: body });
+    return json(await client.post("/units/", body));
+  },
+);
+
 // Escape hatch while we map the API: any GET against a DoorLoop path.
 server.registerTool(
   "doorloop_get",
