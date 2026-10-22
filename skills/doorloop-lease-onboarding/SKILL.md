@@ -26,7 +26,8 @@ pull out:
 | Field | Notes |
 | --- | --- |
 | Unit | As written, e.g. "Apt 2", "Unit B" |
-| Tenants | First and last name of every adult on the lease |
+| Landlord | As named on the lease, to check it's the right owner or company |
+| Tenants | First and last name of every adult on the lease. DoorLoop needs them split; if the split isn't obvious (one word, three words, a company), flag it and show the split you'd use |
 | Tenant email / phone | Optional. Only what's in the document |
 | Start date, end date | YYYY-MM-DD |
 | Term | Fixed (has an end date) or AtWill (month-to-month) |
@@ -34,10 +35,17 @@ pull out:
 | Monthly rent | Amount, and how often if not monthly |
 | Rent due day | e.g. the 1st; sets the first rent date |
 | Security deposit | Amount |
-| Other recurring charges | Parking, pets, utilities, fees: amount and how often |
+| Other recurring charges | Parking, pets, utilities, fees that apply every period: amount and how often |
+| Late fee terms | Grace period and amount, as written |
+| Conditional or one-off fees | Not charges yet, just notes: pet rent "if approved", cleaning fee on move-out, returned-check fee |
 | Source | File name and page, so the person can check |
 
 Don't guess. If something isn't in the document, leave it blank and flag it.
+
+Only put a charge in **Other recurring charges** if the lease says the tenant pays it every period from
+the start. A charge that depends on something ("$25/month pet rent once a pet is approved") goes in the
+notes column and is flagged; ask whether it applies before adding it. Penalty fees (late, cleaning,
+returned check) are never set up as charges here.
 
 ## 3. Show one review table
 
@@ -53,8 +61,14 @@ One row per lease, the columns above, and a **Flags** column. Flag:
   tenant that may already exist (`list_tenants` with `filter_text` on the name). Reuse an existing tenant's
   id rather than creating a duplicate.
 
-Map each recurring charge to an account with `list_accounts` (e.g. Parking, Pet Fees, Utility) and show
-the account name in the table. If none fits, flag it and ask.
+Map each recurring charge to an income account with `list_accounts` (e.g. Parking, Pet Fees, Utility)
+and show the account name in the table. Accounts come 100 per page, so read every page (`page_number`
+2, 3, ...) before deciding none fits. Use a REVENUE account for a charge, not a LIABILITY one like
+"Pet Deposit". If none fits, flag it and ask.
+
+Late fees: `create_lease` can turn on DoorLoop's automatic late fees, but DoorLoop then uses the
+property's or company's late-fee settings, not the amounts in the lease. Show the lease's late-fee terms
+and ask whether to turn them on; leave them off by default.
 
 Ask the person to fix or confirm the flagged rows. Leases they don't confirm are skipped, not guessed.
 
