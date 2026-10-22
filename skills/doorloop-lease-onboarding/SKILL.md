@@ -68,9 +68,19 @@ and show the account name in the table. Accounts come 100 per page, so read ever
 2, 3, ...) before deciding none fits. Use a REVENUE account for a charge, not a LIABILITY one like
 "Pet Deposit". If none fits, flag it and ask.
 
-Late fees: `create_lease` can turn on DoorLoop's automatic late fees, but DoorLoop then uses the
-property's or company's late-fee settings, not the amounts in the lease. Show the lease's late-fee terms
-and ask whether to turn them on; leave them off by default.
+Late fees: the API can only switch DoorLoop's automatic late fees on or off for a lease
+(`automaticLateFees` on `create_lease`); it can't set the amounts, and it can't read the late-fee settings
+(405). DoorLoop then uses the company's late-fee schedule unless the property or lease is customized.
+To show the person what that means, read the schedule in Chrome (doorloop-web-forms skill): Settings >
+Company defaults > **Fees** > **Late fees** tab (`/settings/general-settings/edit/online-payment-fees?fee=late-fees`).
+Put it next to the lease's own terms in the table, e.g. "Lease: $25 after 3 days + $5/day. DoorLoop:
+$75 after 7 days, then $150 after 15 days". Ask whether to turn automatic late fees on, and whether the
+company schedule is acceptable. If the person wants the lease's own amounts instead, that's a per-lease
+customization in the web app after the lease exists; don't promise it until it's been done once.
+
+Returned-payment fees: DoorLoop charges these automatically from the same Fees page (**Returned payment
+fees** tab), so don't post them by hand with `create_lease_charge` for payments made through DoorLoop.
+Flag it if the lease's amount differs from the company setting.
 
 Ask the person to fix or confirm the flagged rows. Leases they don't confirm are skipped, not guessed.
 
