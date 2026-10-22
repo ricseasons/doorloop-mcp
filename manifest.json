@@ -4,14 +4,20 @@
   "display_name": "DoorLoop",
   "version": "0.1.0",
   "description": "Read and manage DoorLoop properties, units, tenants, leases and balances.",
-  "author": { "name": "Rico" },
+  "author": {
+    "name": "Rico"
+  },
   "server": {
     "type": "node",
     "entry_point": "dist/index.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/dist/index.js"],
-      "env": { "DOORLOOP_API_KEY": "${user_config.api_key}" }
+      "args": [
+        "${__dirname}/dist/index.js"
+      ],
+      "env": {
+        "DOORLOOP_API_KEY": "${user_config.api_key}"
+      }
     }
   },
   "user_config": {
@@ -24,16 +30,53 @@
     }
   },
   "tools": [
-    { "name": "whoami", "description": "Check the connection and show the key's owner" },
-    { "name": "list_properties", "description": "List properties" },
-    { "name": "get_property", "description": "Get one property" },
-    { "name": "list_units", "description": "List units" },
-    { "name": "get_unit", "description": "Get one unit" },
-    { "name": "list_tenants", "description": "List tenants" },
-    { "name": "get_tenant", "description": "Get one tenant" },
-    { "name": "list_leases", "description": "List leases" },
-    { "name": "get_lease", "description": "Get one lease" },
-    { "name": "get_rent_roll", "description": "Rent roll with balances" },
-    { "name": "doorloop_get", "description": "Read-only GET on any DoorLoop path" }
+    {
+      "name": "whoami",
+      "description": "Check the connection and show the key's owner"
+    },
+    {
+      "name": "list_properties",
+      "description": "List properties"
+    },
+    {
+      "name": "get_property",
+      "description": "Get one property"
+    },
+    {
+      "name": "list_units",
+      "description": "List units"
+    },
+    {
+      "name": "get_unit",
+      "description": "Get one unit"
+    },
+    {
+      "name": "list_tenants",
+      "description": "List tenants"
+    },
+    {
+      "name": "get_tenant",
+      "description": "Get one tenant"
+    },
+    {
+      "name": "list_leases",
+      "description": "List leases"
+    },
+    {
+      "name": "get_lease",
+      "description": "Get one lease"
+    },
+    {
+      "name": "get_rent_roll",
+      "description": "Rent roll with balances"
+    },
+    {
+      "name": "create_property_with_units",
+      "description": "Create a property and its units (previews first)"
+    },
+    {
+      "name": "doorloop_get",
+      "description": "Read-only GET on any DoorLoop path"
+    }
   ]
 }

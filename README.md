@@ -44,7 +44,7 @@ claude mcp add doorloop -- node "$(pwd)/dist/index.js"
 
 ## Tools
 
-All tools are read-only for now:
+Read tools, plus one write tool that previews before it creates anything:
 
 | Tool | What it does |
 | --- | --- |
@@ -54,9 +54,17 @@ All tools are read-only for now:
 | `list_tenants`, `get_tenant` | Tenants, with text search |
 | `list_leases`, `get_lease` | Leases, optionally by property or unit |
 | `get_rent_roll` | Rent roll report with balances |
+| `create_property_with_units` | Creates a property and its units in one step. Returns a preview unless `confirm` is true. |
 | `doorloop_get` | Any GET path, for exploring endpoints we haven't wrapped yet |
 
 Requests are throttled to stay under DoorLoop's ~50 requests/minute limit, and 429s are retried.
+
+## Undocumented endpoints
+
+DoorLoop's public API can't create units. `create_property_with_units` uses
+`POST /api/properties/create-property-wizard/`, the call the web app's New property wizard makes.
+It isn't documented, so it may change, and we still need to confirm it accepts an API key rather
+than only a browser login.
 
 ## Roadmap
 
