@@ -117,6 +117,8 @@ fees), not by the amounts written in the lease. The API can't set per-lease late
 - Delete the test subtask `6ad99fdfa862267e62cdefa4` and work order `6ad9a13215c7a7215609a1cf` in DoorLoop.
   They sit under a real tenant request ("Pest Control Needed", 444 North Central Avenue #108), not a test
   task. Future task tests use the 7307 Reservation Drive task "Pest Control" (`6ad9736b315f38741ee8102f`).
+- Delete the test unit "API Test Unit" on 7307 Reservation Drive (`6adaef1812eb6d62b9152a71`, added
+  2026-10-23 through Claude in Chrome) when done.
 - Delete the task control test records under that 7307 task when done: subtask `6adadedc7eb2a1d131e9521b`,
   work order `6adadede89ebd97822a3f534` (created 2026-10-23, notifications off).
 
