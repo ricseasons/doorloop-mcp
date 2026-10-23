@@ -14,7 +14,7 @@ The server looks for it in this order:
    you install the `.mcpb` extension.
 2. Your OS keychain (macOS Keychain, or GNOME Keyring/KWallet on Linux), under service `doorloop-mcp`.
 
-Create a key in DoorLoop under **Settings > Zapier & API Keys** (Premium plan). Give it a role with only
+Create a key in DoorLoop under **Settings > Zapier & API Keys** (included in DoorLoop's base plan). Give it a role with only
 the access the agent needs.
 
 ## Setup
