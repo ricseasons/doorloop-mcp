@@ -44,7 +44,11 @@ before clicking **Save** or **Finish**. These create real records.
    - Leave **This unit is active** checked.
    The **Photos** and **Rental application** sections on the left are optional; skip them unless asked.
 4. Take a screenshot, show the person, and click **Save** after their OK.
-5. Confirm with `list_units` (`filter_property`) that the new unit is there, and report its id.
+5. After Save, DoorLoop may jump to the Overview page instead of the property; that's normal. Confirm
+   with `list_units` (`filter_property`) that the new unit is there, and report its id. Click Save only
+   once; if nothing seems to happen, check `list_units` before trying again so you don't make a duplicate.
+
+Tested 2026-10-23: "API Test Unit" on 7307 Reservation Drive (unit `6adaef1812eb6d62b9152a71`).
 
 ## New property with units
 
@@ -71,6 +75,8 @@ Show the person a summary of every step, then click **Finish** after their OK. C
 
 - Work in a new tab and close it when done.
 - Read the page with `find` / `read_page` before clicking; take a screenshot before Save or Finish.
+- DoorLoop shows popups (product surveys, "how likely are you to recommend" ratings) that can cover the
+  form. Close them with their X without answering; never fill in or submit them.
 - If a click or field doesn't respond after 2–3 tries, stop and tell the person what happened.
 - DoorLoop can change these forms. If a field or button named here is missing, describe what you see
   instead of guessing, and say this skill needs updating.
