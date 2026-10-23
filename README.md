@@ -19,7 +19,16 @@ the access the agent needs.
 
 ## Setup
 
-On a Mac or Linux with Claude Code, one command does it all:
+**Let Claude do it.** Open Claude Code in any folder and paste:
+
+> Set up the DoorLoop MCP server for me: clone github.com/ricseasons/doorloop-mcp (branch
+> create-property-with-units) and follow its INSTALL-AGENT.md.
+
+Claude checks for Node.js and Git, installs what's missing, and runs the setup. It only asks you for the
+things it can't do: sign in to GitHub, enter your DoorLoop API key in your own terminal, approve any admin
+prompt, and set up Claude in Chrome. [INSTALL-AGENT.md](INSTALL-AGENT.md) has the steps it follows.
+
+**Or by hand.** On a Mac or Linux with Claude Code, one command does it all:
 
 ```sh
 npm run setup
