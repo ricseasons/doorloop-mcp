@@ -8,11 +8,13 @@
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "pack": "npm run build && npm prune --omit=dev && npx -y @anthropic-ai/mcpb pack && npm install",
-    "set-key": "node scripts/set-key.mjs"
+    "set-key": "node scripts/set-key.mjs",
+    "login": "node scripts/login.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
+    "playwright-core": "^1.48.2",
     "zod": "^4.6.7"
   },
   "devDependencies": {

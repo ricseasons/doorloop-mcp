@@ -70,6 +70,8 @@ reliable. Set `DOORLOOP_VENDOR_USERS` to use a file elsewhere.
 | `list_accounts` | Chart of accounts, e.g. to pick the account for a parking or pet charge |
 | `create_lease` | Creates a lease with new or existing tenants, rent, security deposit and recurring charges in one transaction (official `POST /leases/full`). Rent and deposit use DoorLoop's default accounts unless given. Portal invite, welcome SMS and late fees are off unless asked. Returns a preview unless `confirm` is true. |
 | `create_lease_charge` | Posts a one-time charge on a lease, e.g. a returned-check or cleaning fee (official `POST /lease-charges`). Accounts by id or name. Returns a preview with account names and the total unless `confirm` is true. |
+| `create_unit` | Adds a unit to an existing property, using the web login from `npm run login`. Returns a preview unless `confirm` is true. |
+| `create_property_with_units` | Creates a property and its units in one step, using the web login. Returns a preview unless `confirm` is true. |
 | `doorloop_get` | Any GET path, for exploring endpoints we haven't wrapped yet |
 
 Requests are throttled to stay under DoorLoop's ~50 requests/minute limit, and 429s are retried.
@@ -86,9 +88,20 @@ Both were tested with an API key on 2026-10-22 and work. The extra fields aren't
 change.
 
 **Units can't be created with an API key.** The web app's `POST /api/units/` and
-`POST /api/properties/create-property-wizard/` return `405 Access Denied` for API keys. The
-[`doorloop-web-forms` skill](skills/doorloop-web-forms/SKILL.md) adds units and new properties through
-the web app's forms with Claude in Chrome. DoorLoop has no self-serve unit import; for a large batch,
+`POST /api/properties/create-property-wizard/` return `405 Access Denied` for API keys, so
+`create_unit` and `create_property_with_units` use your DoorLoop **web login** instead. Save it once with:
+
+```sh
+npm run login
+```
+
+It opens Chrome at DoorLoop's sign-in page; you sign in yourself (2FA included). The script reads the login
+the web app uses for its own requests, checks it, stores it in the OS keychain (service `doorloop-mcp`,
+account `web-session`), and closes Chrome. It's never printed or written to a file. While valid it can do
+anything you can do in DoorLoop, so delete it from Keychain Access ("DoorLoop web login") when you're done.
+When it expires, the tools say so; run `npm run login` again. Everything else keeps using the API key.
+If you'd rather not save a web login, the [`doorloop-web-forms` skill](skills/doorloop-web-forms/SKILL.md)
+fills in the web app's forms with Claude in Chrome instead. DoorLoop has no self-serve unit import; for a large batch,
 ask DoorLoop support to import a spreadsheet.
 
 Setting up Claude in Chrome (Mac and Windows) is covered step by step in

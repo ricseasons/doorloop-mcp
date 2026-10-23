@@ -1,5 +1,9 @@
 # Setting up Claude in Chrome
 
+You may not need this. Adding units and properties normally goes through the `create_unit` and
+`create_property_with_units` tools after a one-time `npm run login` (see the README). Set up Claude in
+Chrome only if you'd rather not save a web login, or as a fallback.
+
 Claude fills in DoorLoop forms through **Claude in Chrome**, a browser extension from Anthropic. This
 is a one-time setup. When walking someone through it, give one step at a time and wait for them to say
 it's done.

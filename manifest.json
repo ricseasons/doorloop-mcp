@@ -119,6 +119,14 @@
       "description": "List chart-of-accounts entries"
     },
     {
+      "name": "create_unit",
+      "description": "Add a unit to a property using the web login (previews first)"
+    },
+    {
+      "name": "create_property_with_units",
+      "description": "Create a property with units using the web login (previews first)"
+    },
+    {
       "name": "create_lease",
       "description": "Create a lease with tenants, rent and deposit (previews first)"
     },

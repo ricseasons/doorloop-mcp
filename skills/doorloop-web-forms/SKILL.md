@@ -9,7 +9,16 @@ DoorLoop's API can't create units or properties with an API key, so this skill f
 own forms in the person's Chrome, using their existing DoorLoop login. Use the `doorloop` MCP tools for
 everything else (looking up ids, checking results).
 
-## Before you start
+## Try the web-login tools first
+
+The `doorloop` MCP server has `create_unit` and `create_property_with_units`, which call DoorLoop's own
+endpoints with the web login saved by `npm run login`. They're faster and need no browser. Use them first:
+call without `confirm` to preview, get the person's OK, then call with `confirm: true` and check with
+`list_units`. If one says there's no web login or it expired, ask the person to run `npm run login` in the
+doorloop-mcp folder (they sign in themselves). Use the Chrome steps below only if they'd rather not, or the
+tools fail for another reason.
+
+## Before you start (Chrome)
 
 1. **Check the browser tools.** You need the Claude in Chrome tools (`mcp__claude-in-chrome__*`).
    If they're missing, or a call says the extension isn't connected, stop and walk the person through

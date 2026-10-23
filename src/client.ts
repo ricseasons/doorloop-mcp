@@ -18,7 +18,11 @@ export class DoorLoopError extends Error {
 export class DoorLoopClient {
   private nextSlot = 0;
 
-  constructor(private readonly apiKey: string) {}
+  // `authorization` is the full header value, e.g. `bearer <api key>` or the web app's own session header.
+  constructor(
+    private readonly authorization: string,
+    private readonly baseUrl: string = BASE_URL,
+  ) {}
 
   get<T = unknown>(path: string, query?: Query): Promise<T> {
     return this.request<T>("GET", path, query);
@@ -50,7 +54,7 @@ export class DoorLoopClient {
   }
 
   private async send(method: string, path: string, query: Query | undefined, body: unknown, accept: string) {
-    const url = new URL(BASE_URL.replace(/\/$/, "") + "/" + path.replace(/^\//, ""));
+    const url = new URL(this.baseUrl.replace(/\/$/, "") + "/" + path.replace(/^\//, ""));
     for (const [k, v] of Object.entries(query ?? {})) {
       if (v !== undefined) url.searchParams.set(k, String(v));
     }
@@ -60,7 +64,7 @@ export class DoorLoopClient {
       const res = await fetch(url, {
         method,
         headers: {
-          Authorization: `bearer ${this.apiKey}`,
+          Authorization: this.authorization,
           Accept: accept,
           ...(body !== undefined && { "Content-Type": "application/json" }),
         },

@@ -90,8 +90,9 @@ Ask the person to fix or confirm the flagged rows. Leases they don't confirm are
 
 ## 4. Create missing units first
 
-For units that don't exist, use doorloop-web-forms: the Add unit form for a few, or the New property
-wizard if the property is new. List what you'll add and get an OK first. Re-run `list_units` afterwards
+For units that don't exist, use `create_unit` (or `create_property_with_units` if the property is new),
+which need the web login from `npm run login`; if that isn't available, fall back to doorloop-web-forms
+in Chrome. List what you'll add and get an OK first. Re-run `list_units` afterwards
 to get the new unit ids.
 
 ## 5. Create the leases
