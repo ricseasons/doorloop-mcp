@@ -19,6 +19,19 @@ the access the agent needs.
 
 ## Setup
 
+On a Mac or Linux with Claude Code, one command does it all:
+
+```sh
+npm run setup
+```
+
+It installs and builds, asks for your API key if none is saved (hidden input, into the keychain), checks
+the key against DoorLoop, registers the server with Claude Code, and links the skills into
+`~/.claude/skills` so a `git pull` updates them. It's safe to run again. At the end it lists what's left by
+hand: Claude in Chrome for adding units, and signing in to DoorLoop in Chrome.
+
+The steps below do the same by hand, or set up Claude Desktop instead.
+
 ```sh
 npm install
 npm run build

@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "pack": "npm run build && npm prune --omit=dev && npx -y @anthropic-ai/mcpb pack && npm install",
-    "set-key": "node scripts/set-key.mjs"
+    "set-key": "node scripts/set-key.mjs",
+    "setup": "node scripts/setup.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {
