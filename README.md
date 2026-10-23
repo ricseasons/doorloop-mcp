@@ -59,7 +59,9 @@ Read tools, plus write tools that preview before they create anything:
 | `list_vendors`, `get_vendor` | Vendors |
 | `get_rent_roll` | Rent roll report with balances |
 | `create_task` | Creates an internal task, or a subtask when given `parentTask`. Returns a preview unless `confirm` is true. |
-| `create_work_order` | Creates a vendor work order as a subtask of a task, and can email the vendor. Returns a preview unless `confirm` is true. |
+| `create_work_order` | Creates a vendor work order as a subtask of a task, and can email the vendor. Returns a preview unless `confirm` is true. Not used by the skills: in Rico's process the vendor creates the work order. |
+| `assign_task` | Assigns an existing task to DoorLoop users (`PUT /tasks/{id}`). Returns a preview unless `confirm` is true. |
+| `list_users` | DoorLoop users on the team |
 | `list_accounts` | Chart of accounts, e.g. to pick the account for a parking or pet charge |
 | `create_lease` | Creates a lease with new or existing tenants, rent, security deposit and recurring charges in one transaction (official `POST /leases/full`). Rent and deposit use DoorLoop's default accounts unless given. Portal invite, welcome SMS and late fees are off unless asked. Returns a preview unless `confirm` is true. |
 | `create_lease_charge` | Posts a one-time charge on a lease, e.g. a returned-check or cleaning fee (official `POST /lease-charges`). Accounts by id or name. Returns a preview with account names and the total unless `confirm` is true. |

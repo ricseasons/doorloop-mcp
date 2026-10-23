@@ -28,6 +28,10 @@ export class DoorLoopClient {
     return this.request<T>("POST", path, undefined, body);
   }
 
+  put<T = unknown>(path: string, body: unknown): Promise<T> {
+    return this.request<T>("PUT", path, undefined, body);
+  }
+
   // Downloads a file (e.g. /files/<id>/download) as raw bytes.
   async download(path: string): Promise<{ data: Buffer; contentType: string }> {
     const res = await this.send("GET", path, undefined, undefined, "*/*");

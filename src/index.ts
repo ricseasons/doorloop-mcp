@@ -95,6 +95,34 @@ async function filesFor(resourceId: string) {
   }
 }
 
+listTool("list_users", "/users", "List DoorLoop users on the team, e.g. to pick who a task is assigned to.");
+
+// PUT replaces the whole task, so read it, change the assignees and send it all back.
+server.registerTool(
+  "assign_task",
+  {
+    description:
+      "Assign an existing task to DoorLoop users on the team (replaces its current assignees). Without " +
+      "confirm=true this only returns the change it would make, so show that to the user and get their OK first.",
+    inputSchema: {
+      task: z.string().describe("Task id"),
+      users: z.array(z.string()).min(1).describe("DoorLoop user ids from list_users"),
+      notifyAssignees: z.boolean().default(false),
+      confirm: z.boolean().default(false).describe("Actually assign it. Leave false to preview."),
+    },
+    annotations: { destructiveHint: false, idempotentHint: true },
+  },
+  async ({ task, users, notifyAssignees, confirm }) => {
+    const current = await client.get<Record<string, unknown>>(`/tasks/${encodeURIComponent(task)}`);
+    if (!confirm) {
+      return json({ preview: true, task, from: current.assignedToUsers ?? [], to: users, notifyAssignees });
+    }
+    return json(
+      await client.put(`/tasks/${encodeURIComponent(task)}`, { ...current, assignedToUsers: users, notifyAssignees }),
+    );
+  },
+);
+
 server.registerTool(
   "list_task_children",
   {

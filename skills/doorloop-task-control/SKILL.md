@@ -1,16 +1,17 @@
 ---
 name: doorloop-task-control
-description: Review open DoorLoop tasks, rank them by severity, propose the right vendor, and after the person confirms create a subtask plus a vendor work order with vendor, owner and tenant notifications. Use when someone wants to triage, review or catch up on open, overdue, unassigned or not-started maintenance tasks, or dispatch a vendor.
+description: Review open DoorLoop tasks, rank them by severity, discuss the high-priority ones, recommend a vendor, and after the person confirms assign the task. Does not create work orders (the vendor does). Use when someone wants to triage, review or catch up on open, overdue, unassigned or not-started maintenance tasks.
 ---
 
 # DoorLoop task control
 
-Goal: find the tasks that need attention, agree on the most serious ones with the person, and dispatch a
-vendor for each. Nothing is created and nobody is notified until the person says yes to a preview.
+Goal: find the tasks that need attention, agree on the most serious ones with the person, recommend a
+vendor, and assign each confirmed task. Nothing changes and nobody is notified until the person says yes
+to a preview.
 
 Tools: the `doorloop` MCP server (`list_tasks`, `get_task`, `list_task_children`, `get_task_files`,
-`list_vendors`, `get_vendor`, `list_properties`, `get_unit`, `get_tenant`, `create_task`,
-`create_work_order`).
+`list_vendors`, `get_vendor`, `list_users`, `list_properties`, `get_unit`, `get_tenant`, `assign_task`).
+`create_task` and `create_work_order` exist on the server but are **not used by this skill**.
 
 Task fields (as DoorLoop returns them): `subject`, `description`, `type` (`TENANT_REQUEST`,
 `INTERNAL_TASK`, `WORK_ORDER`), `status` (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`), `priority`
@@ -74,26 +75,26 @@ Skip vendors with `active: false` and those whose notes say not to use them. Uti
 non-trade payees in the vendor list are never candidates. Propose one vendor with the reasons, plus up to
 two backups. The person confirms or picks another.
 
-## 5. Preview, then create
+## 5. Confirm, then assign
 
-Once the vendor is confirmed, prepare two records, both linked to the task being worked:
+This skill **does not create work orders**: the vendor creates the work order. It only assigns the task.
 
-1. A **subtask** with `create_task` (`parentTask` = the task id): an internal follow-up such as
-   "Follow up with <vendor> on <subject>", due a day or two after the work order's due date.
-2. A **work order** with `create_work_order` (`task` = the task id, `vendor` = the vendor id), with the subject,
-   a description written for the vendor (what's wrong, where, access notes), priority from the severity
-   level (1 → HIGH, 2 → HIGH, 3 → MEDIUM, 4 → LOW), a due date, and
-   `notifyVendor=true`, `notifyOwners=true`, `notifyTenants=true`.
+> Open question (2026-10-23): Rico wants the vendor to get the task, with vendor, owner, tenant and
+> assignee notifications. DoorLoop tasks can only be assigned to users; the web app attaches a vendor only
+> through a work order. Until Rico says how a vendor gets a task in his process, assign to a team user and
+> name the recommended vendor.
 
-Call both without `confirm` first and show the person the previews in plain words: who gets notified (the
-vendor, the property's owners, and the unit's tenants by name), the vendor email text, and the due dates.
-Only after an explicit yes, call both again with `confirm=true`, then `get_task` to confirm they exist and
-report the links.
+1. Propose who the task goes to: a DoorLoop user on the team (`list_users`; skip inactive users), with the
+   recommended vendor from step 4 as the note of who should do the work.
+2. Call `assign_task` without `confirm` to show the change (current assignees → new ones), and whether
+   the assignee will be notified (`notifyAssignees`).
+3. Only after the person's explicit yes, call it again with `confirm=true`, then `get_task` to check
+   `assignedToUsers` and report it.
 
-If the task has no unit or tenant, say that the tenant notification will reach no one. Never turn on
-notifications for a test property or test task unless the person asks.
+Tasks can only be assigned to users; DoorLoop only links a vendor to a task through a work order. Never
+assign a test task to a real person with notifications on unless the person asks.
 
 ## 6. Next task
 
-Go back to step 3 for the next task on the list until the person stops. End with a summary of what was
-dispatched and what is still open.
+Go back to step 3 for the next task on the list until the person stops. End with a summary: which tasks
+were assigned to whom, the vendor recommended for each, and what is still open.
