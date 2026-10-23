@@ -67,6 +67,9 @@ For the task being discussed, `list_vendors` (page through all) and score candid
    `workOrder.assignedToVendor` (DoorLoop ignores a vendor filter there) on the same property or the same
    kind of problem.
 
+If none of the candidates is in the property's state, say so plainly ("no pest vendor near Springfield,
+VA; closest is in Olive Branch, MS") so the person can decide whether to add a local vendor first.
+
 Skip vendors with `active: false` and those whose notes say not to use them. Utilities, lenders and other
 non-trade payees in the vendor list are never candidates. Propose one vendor with the reasons, plus up to
 two backups. The person confirms or picks another.

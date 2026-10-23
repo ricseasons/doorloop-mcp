@@ -108,6 +108,10 @@ fees), not by the amounts written in the lease. The API can't set per-lease late
 - Use the `doorloop-web-forms` skill to actually save a unit once (forms mapped, nothing saved yet).
 - Confirm the landlord name on the test lease: Speights LLC, or James Speights.
 - Delete the test subtask `6ad99fdfa862267e62cdefa4` and work order `6ad9a13215c7a7215609a1cf` in DoorLoop.
+  They sit under a real tenant request ("Pest Control Needed", 444 North Central Avenue #108), not a test
+  task. Future task tests use the 7307 Reservation Drive task "Pest Control" (`6ad9736b315f38741ee8102f`).
+- Delete the task control test records under that 7307 task when done: subtask `6adadedc7eb2a1d131e9521b`,
+  work order `6adadede89ebd97822a3f534` (created 2026-10-23, notifications off).
 
 ## Roadmap
 
