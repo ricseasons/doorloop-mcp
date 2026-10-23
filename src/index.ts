@@ -2,6 +2,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { loadApiKey } from "./auth.js";
 import { DoorLoopClient, type Query } from "./client.js";
@@ -97,29 +99,69 @@ async function filesFor(resourceId: string) {
 
 listTool("list_users", "/users", "List DoorLoop users on the team, e.g. to pick who a task is assigned to.");
 
+// Vendors who log in to DoorLoop have a user account; vendor-users.json maps vendor id -> user id.
+// Matching by email or name isn't reliable (vendors share company emails), so the mapping is explicit.
+const VENDOR_USERS_FILE =
+  process.env.DOORLOOP_VENDOR_USERS ?? fileURLToPath(new URL("../vendor-users.json", import.meta.url));
+
+function vendorUsers(): Record<string, string> {
+  try {
+    const map = JSON.parse(readFileSync(VENDOR_USERS_FILE, "utf8")) as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(map).filter((e): e is [string, string] => /^[0-9a-f]{24}$/.test(e[0]) && typeof e[1] === "string"),
+    );
+  } catch {
+    return {};
+  }
+}
+
+server.registerTool(
+  "list_vendor_users",
+  {
+    description: "Show which vendors have a DoorLoop login (from vendor-users.json), so tasks can be assigned to them.",
+    annotations: { readOnlyHint: true },
+  },
+  async () => json({ file: VENDOR_USERS_FILE, vendorToUser: vendorUsers() }),
+);
+
 // PUT replaces the whole task, so read it, change the assignees and send it all back.
 server.registerTool(
   "assign_task",
   {
     description:
-      "Assign an existing task to DoorLoop users on the team (replaces its current assignees). Without " +
-      "confirm=true this only returns the change it would make, so show that to the user and get their OK first.",
+      "Assign an existing task to a vendor's DoorLoop login (by vendor id) or to DoorLoop users (replaces the " +
+      "current assignees). Without confirm=true this only returns the change it would make, including the " +
+      "notification flags, so show that to the user and get their OK first.",
     inputSchema: {
       task: z.string().describe("Task id"),
-      users: z.array(z.string()).min(1).describe("DoorLoop user ids from list_users"),
-      notifyAssignees: z.boolean().default(false),
+      vendor: z.string().optional().describe("Vendor id; assigned to that vendor's DoorLoop user from vendor-users.json"),
+      users: z.array(z.string()).optional().describe("DoorLoop user ids from list_users, instead of a vendor"),
+      notifyAssignees: z.boolean().default(true),
+      notifyOwners: z.boolean().default(true),
+      notifyTenants: z.boolean().default(true),
       confirm: z.boolean().default(false).describe("Actually assign it. Leave false to preview."),
     },
     annotations: { destructiveHint: false, idempotentHint: true },
   },
-  async ({ task, users, notifyAssignees, confirm }) => {
-    const current = await client.get<Record<string, unknown>>(`/tasks/${encodeURIComponent(task)}`);
-    if (!confirm) {
-      return json({ preview: true, task, from: current.assignedToUsers ?? [], to: users, notifyAssignees });
+  async ({ task, vendor, users, notifyAssignees, notifyOwners, notifyTenants, confirm }) => {
+    let assignees = users ?? [];
+    if (vendor) {
+      const user = vendorUsers()[vendor];
+      if (!user) {
+        throw new Error(
+          `Vendor ${vendor} has no DoorLoop login in vendor-users.json. Pick a vendor that has one, or pass users.`,
+        );
+      }
+      assignees = [...new Set([...assignees, user])];
     }
-    return json(
-      await client.put(`/tasks/${encodeURIComponent(task)}`, { ...current, assignedToUsers: users, notifyAssignees }),
-    );
+    if (!assignees.length) throw new Error("Pass a vendor or at least one user.");
+
+    const current = await client.get<Record<string, unknown>>(`/tasks/${encodeURIComponent(task)}`);
+    const flags = { notifyAssignees, notifyOwners, notifyTenants };
+    if (!confirm) {
+      return json({ preview: true, task, from: current.assignedToUsers ?? [], to: assignees, ...flags });
+    }
+    return json(await client.put(`/tasks/${encodeURIComponent(task)}`, { ...current, assignedToUsers: assignees, ...flags }));
   },
 );
 

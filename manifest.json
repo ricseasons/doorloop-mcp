@@ -79,6 +79,18 @@
       "description": "Get one task"
     },
     {
+      "name": "list_users",
+      "description": "List DoorLoop users on the team"
+    },
+    {
+      "name": "list_vendor_users",
+      "description": "Show which vendors have a DoorLoop login"
+    },
+    {
+      "name": "assign_task",
+      "description": "Assign a task to a vendor's login or team users (previews first)"
+    },
+    {
       "name": "list_task_children",
       "description": "List a task's subtasks and work orders"
     },

@@ -77,22 +77,20 @@ two backups. The person confirms or picks another.
 
 ## 5. Confirm, then assign
 
-This skill **does not create work orders**: the vendor creates the work order. It only assigns the task.
+This skill **does not create work orders or subtasks**: the vendor gets the task and creates the work order
+themselves. Vendors who do this have their own DoorLoop login, and the task is assigned to that login.
 
-> Open question (2026-10-23): Rico wants the vendor to get the task, with vendor, owner, tenant and
-> assignee notifications. DoorLoop tasks can only be assigned to users; the web app attaches a vendor only
-> through a work order. Until Rico says how a vendor gets a task in his process, assign to a team user and
-> name the recommended vendor.
-
-1. Propose who the task goes to: a DoorLoop user on the team (`list_users`; skip inactive users), with the
-   recommended vendor from step 4 as the note of who should do the work.
-2. Call `assign_task` without `confirm` to show the change (current assignees → new ones), and whether
-   the assignee will be notified (`notifyAssignees`).
+1. Check the recommended vendor has a login: `list_vendor_users` (vendor id → user id). If it doesn't, say
+   so ("Action Pest Control has no DoorLoop login") and offer the next candidate that has one, or a team
+   user from `list_users`. Never guess a vendor's login from emails or names; vendors share company emails.
+2. Call `assign_task` with `vendor` = the vendor id (it looks up the login) and without `confirm`. Show the
+   change (current assignees → the vendor's login) and who will be notified. Everyone is notified by
+   default: the assignee (the vendor), the property's owners and the unit's tenants, by name. Say when a
+   group reaches no one (no owners on the property, no tenant on the unit).
 3. Only after the person's explicit yes, call it again with `confirm=true`, then `get_task` to check
    `assignedToUsers` and report it.
 
-Tasks can only be assigned to users; DoorLoop only links a vendor to a task through a work order. Never
-assign a test task to a real person with notifications on unless the person asks.
+Never assign a test task with notifications on unless the person asks.
 
 ## 6. Next task
 
