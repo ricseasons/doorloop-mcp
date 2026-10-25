@@ -109,7 +109,8 @@ go; if any part fails, nothing is saved.
   Turning on the portal invites tenants by email, so ask first and say who would get one.
 
 You can show several previews together, as a short list (unit, tenants, dates, rent, deposit, charges).
-Once the person says yes, call each one again with `confirm: true`, one at a time. If one fails, report
+Then stop and wait: an OK on the review table is not an OK to create. Never preview and confirm in the same
+reply. Once the person says yes to the previews, call each one again with `confirm: true`, one at a time. If one fails, report
 the error and carry on with the rest only if the person agrees.
 
 Dates in the past: DoorLoop will post rent charges from the start date, so an old lease creates a

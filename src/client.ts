@@ -1,7 +1,7 @@
 const BASE_URL = process.env.DOORLOOP_BASE_URL ?? "https://app.doorloop.com/api";
 
-// DoorLoop allows roughly 50 requests/minute; stay a little under that.
-const MIN_INTERVAL_MS = 1300;
+// DoorLoop allows roughly 50 requests/minute; stay a little under that. The evals' fake DoorLoop sets 0.
+const MIN_INTERVAL_MS = Number(process.env.DOORLOOP_MIN_INTERVAL_MS ?? 1300);
 const MAX_RETRIES = 3;
 
 export type Query = Record<string, string | number | boolean | undefined>;
