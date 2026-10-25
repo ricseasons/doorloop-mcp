@@ -79,7 +79,6 @@ Without `gh`, git asks for sign-in on the first clone. Then:
 ```sh
 git clone https://github.com/ricseasons/doorloop-mcp.git
 cd doorloop-mcp
-git checkout create-property-with-units   # until PR #1 is merged into main
 ```
 
 If the clone says "repository not found", the account doesn't have access yet. Tell the user to ask Rico.
