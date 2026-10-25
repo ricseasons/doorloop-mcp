@@ -231,6 +231,80 @@ server.registerTool(
   async (args) => json(await client.get("/reports/rent-roll", args as Query)),
 );
 
+// DoorLoop has no overdue filter on /leases, so read every page and keep the ones with an overdue balance.
+server.registerTool(
+  "list_past_due_leases",
+  {
+    description:
+      "Leases with an overdue balance (overdueBalance > 0), largest first, with each lease's property and " +
+      "unit names and its tenants' names, emails and phones. Read-only; use it to draft past-due messages.",
+    inputSchema: {
+      filter_property: z.string().optional().describe("Property id to filter by"),
+      min_overdue: z.number().min(0).default(0).describe("Only leases owing more than this"),
+    },
+    annotations: { readOnlyHint: true },
+  },
+  async ({ filter_property, min_overdue }) => {
+    type Lease = {
+      id: string;
+      name?: string;
+      status?: string;
+      property?: string;
+      units?: string[];
+      tenants?: string[];
+      start?: string;
+      end?: string;
+      totalBalanceDue?: number;
+      overdueBalance?: number;
+    };
+    const leases: Lease[] = [];
+    for (let page = 1; ; page++) {
+      const { data, total } = await client.get<{ data: Lease[]; total: number }>("/leases", {
+        filter_property,
+        page_size: 100,
+        page_number: page,
+      });
+      leases.push(...data.filter((l) => (l.overdueBalance ?? 0) > min_overdue));
+      if (!data.length || page * 100 >= total) break;
+    }
+    leases.sort((a, b) => (b.overdueBalance ?? 0) - (a.overdueBalance ?? 0));
+
+    // Each property, unit and tenant is read once, however many leases share it.
+    const cache = new Map<string, Promise<Record<string, any> | undefined>>();
+    const lookup = (path: string, id?: string) => {
+      if (!id) return Promise.resolve(undefined);
+      const key = `${path}/${id}`;
+      if (!cache.has(key)) cache.set(key, client.get<Record<string, any>>(`${path}/${encodeURIComponent(id)}`).catch(() => undefined));
+      return cache.get(key)!;
+    };
+
+    const results = [];
+    for (const l of leases) {
+      const property = await lookup("/properties", l.property);
+      const units = await Promise.all((l.units ?? []).map((u) => lookup("/units", u)));
+      const tenants = await Promise.all((l.tenants ?? []).map((t) => lookup("/tenants", t)));
+      results.push({
+        lease: l.id,
+        name: l.name,
+        status: l.status,
+        start: l.start,
+        end: l.end,
+        overdueBalance: l.overdueBalance,
+        totalBalanceDue: l.totalBalanceDue,
+        property: { id: l.property, name: property?.name },
+        units: units.map((u, i) => ({ id: l.units![i], name: u?.name })),
+        tenants: tenants.map((t, i) => ({
+          id: l.tenants![i],
+          name: t ? [t.firstName, t.lastName].filter(Boolean).join(" ") || t.name : undefined,
+          emails: t?.emails,
+          phones: t?.phones,
+        })),
+      });
+    }
+    return json({ count: results.length, totalOverdue: results.reduce((s, r) => s + (r.overdueBalance ?? 0), 0), leases: results });
+  },
+);
+
 // Mirrors the web app's new task / new subtask form (captured 2026-10-22). Undocumented.
 server.registerTool(
   "create_task",

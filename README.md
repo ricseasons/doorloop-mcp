@@ -80,6 +80,7 @@ Read tools, plus write tools that preview before they create anything:
 | `get_task_files` | Files attached to a task, with its photos returned as images |
 | `list_vendors`, `get_vendor` | Vendors |
 | `get_rent_roll` | Rent roll report with balances |
+| `list_past_due_leases` | Leases with an `overdueBalance`, largest first, with property, unit and tenant names, emails and phones |
 | `create_task` | Creates an internal task, or a subtask when given `parentTask`. Returns a preview unless `confirm` is true. |
 | `create_work_order` | Creates a vendor work order as a subtask of a task, and can email the vendor. Returns a preview unless `confirm` is true. Not used by the skills: in Rico's process the vendor creates the work order. |
 | `assign_task` | Assigns an existing task to a vendor's DoorLoop login (by vendor id) or to team users (`PUT /tasks/{id}`), with assignee, owner and tenant notifications on by default. Returns a preview unless `confirm` is true. |
@@ -128,6 +129,8 @@ on, and DoorLoop charges them by its own late-fee schedule (Settings > Company d
 fees), not by the amounts written in the lease. The API can't set per-lease late-fee amounts.
 - [`doorloop-web-forms`](skills/doorloop-web-forms/SKILL.md): add units or a new property with Claude in
   Chrome.
+- [`doorloop-past-due-messages`](skills/doorloop-past-due-messages/SKILL.md): finds tenants with an overdue
+  balance and drafts a message to each for review. It only drafts; nothing is sent to tenants.
 
 ## Open items (paused 2026-10-22)
 
@@ -146,5 +149,5 @@ fees), not by the amounts written in the lease. The API can't set per-lease late
 
 ## Roadmap
 
-1. Past-due skill: list tenants with an `overdueBalance` and draft messages for review.
+1. Done: past-due skill (`doorloop-past-due-messages`), drafts only.
 2. Task control skill: review open tasks, pick a vendor, create a subtask and work order.

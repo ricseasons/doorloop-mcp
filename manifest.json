@@ -71,6 +71,10 @@
       "description": "Rent roll with balances"
     },
     {
+      "name": "list_past_due_leases",
+      "description": "Leases with an overdue balance, with tenant contacts"
+    },
+    {
       "name": "list_tasks",
       "description": "List tasks"
     },
