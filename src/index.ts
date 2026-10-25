@@ -251,7 +251,6 @@ server.registerTool(
       status?: string;
       property?: string;
       units?: string[];
-      tenants?: string[];
       start?: string;
       end?: string;
       totalBalanceDue?: number;
@@ -269,7 +268,7 @@ server.registerTool(
     }
     leases.sort((a, b) => (b.overdueBalance ?? 0) - (a.overdueBalance ?? 0));
 
-    // Each property, unit and tenant is read once, however many leases share it.
+    // Each property and unit is read once, however many leases share it.
     const cache = new Map<string, Promise<Record<string, any> | undefined>>();
     const lookup = (path: string, id?: string) => {
       if (!id) return Promise.resolve(undefined);
@@ -282,7 +281,10 @@ server.registerTool(
     for (const l of leases) {
       const property = await lookup("/properties", l.property);
       const units = await Promise.all((l.units ?? []).map((u) => lookup("/units", u)));
-      const tenants = await Promise.all((l.tenants ?? []).map((t) => lookup("/tenants", t)));
+      // Lease records carry no tenant ids, and tenants don't name their lease, so ask /tenants by lease.
+      const { data: tenants } = await client
+        .get<{ data: Record<string, any>[] }>("/tenants", { filter_lease: l.id, page_size: 100 })
+        .catch(() => ({ data: [] as Record<string, any>[] }));
       results.push({
         lease: l.id,
         name: l.name,
@@ -293,11 +295,11 @@ server.registerTool(
         totalBalanceDue: l.totalBalanceDue,
         property: { id: l.property, name: property?.name },
         units: units.map((u, i) => ({ id: l.units![i], name: u?.name })),
-        tenants: tenants.map((t, i) => ({
-          id: l.tenants![i],
-          name: t ? [t.firstName, t.lastName].filter(Boolean).join(" ") || t.name : undefined,
-          emails: t?.emails,
-          phones: t?.phones,
+        tenants: tenants.map((t) => ({
+          id: t.id,
+          name: [t.firstName, t.lastName].filter(Boolean).join(" ") || t.name,
+          emails: t.emails,
+          phones: t.phones,
         })),
       });
     }
