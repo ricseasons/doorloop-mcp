@@ -115,7 +115,16 @@ async function runCase(c, out) {
     for (let i = 0; i < (c.maxTurns ?? 8); i++) {
       mock.setTurn(i);
       const args = [...baseArgs, ...(i === 0 ? ["--session-id", sessionId] : ["--resume", sessionId])];
-      const { events } = await claude(args, { cwd: ws, prompt: message });
+      let events;
+      try {
+        ({ events } = await claude(args, { cwd: ws, prompt: message }));
+      } catch (e) {
+        // Keep what happened so far, so a stuck or crashed run can be looked at.
+        turns.push({ user: message, ...summarizeTurn(e.events ?? []) });
+        writeFileSync(join(out, "transcript.md"), transcriptMarkdown(c, turns));
+        writeFileSync(join(out, "requests.json"), JSON.stringify(mock.log, null, 2));
+        throw e;
+      }
       const turn = { user: message, ...summarizeTurn(events) };
       cost += turn.cost;
       if (i === 0) assertIsolated(turn.init);

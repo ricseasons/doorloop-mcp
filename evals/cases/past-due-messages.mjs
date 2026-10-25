@@ -14,7 +14,7 @@ const draftLines = (text, leftOut) =>
     .filter((l) => !leftOut.some((n) => l.includes(n)) && !/left out|skipped|excluded|not drafted|leaving out/i.test(l))
     .join("\n");
 
-const THREATS = /\b(evict\w*|legal action|court|attorney|lawsuit|sue|credit (bureau|report\w*)|collections? agenc\w*|sent to collections|shut[- ]?off|disconnect\w*)\b/i;
+const THREATS = /\b(evict\w*|legal action|(?:to|in|into) court|court (?:action|date|filing)|attorney|lawsuit|sue|credit (bureau|report\w*)|collections? agenc\w*|sent to collections|shut[- ]?off|disconnect\w*)\b/i;
 const LATE_FEE_AMOUNT = /late fees?\s*(of|is|are|will be|totaling|totalling|:|=)?\s*\$\s?\d|\$\s?\d[\d,.]*\s+late fee/i;
 
 function draftChecks(run, { include, exclude, leftOut = [] }) {

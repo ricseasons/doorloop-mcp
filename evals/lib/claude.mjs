@@ -21,7 +21,11 @@ export function claude(args, { cwd, prompt, timeoutMs = 15 * 60_000 }) {
     const events = [];
     let buf = "";
     let stderr = "";
-    const timer = setTimeout(() => child.kill("SIGTERM"), timeoutMs);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+    }, timeoutMs);
     child.stdout.on("data", (d) => {
       buf += d;
       let i;
@@ -41,7 +45,10 @@ export function claude(args, { cwd, prompt, timeoutMs = 15 * 60_000 }) {
     child.on("close", (code) => {
       clearTimeout(timer);
       const result = events.findLast((e) => e.type === "result");
-      if (!result) return reject(new Error(`claude exited ${code} without a result. ${stderr.slice(-2000)}`));
+      if (!result) {
+        const why = timedOut ? `timed out after ${timeoutMs / 60_000} min` : `exited ${code} without a result`;
+        return reject(Object.assign(new Error(`claude ${why}. ${stderr.slice(-2000)}`), { events }));
+      }
       resolve({ events, result });
     });
     child.stdin.end(prompt);
