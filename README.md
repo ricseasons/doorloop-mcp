@@ -79,9 +79,9 @@ Read tools, plus write tools that preview before they create anything:
 Vendors who work tasks have their own DoorLoop login. `vendor-users.json` maps each vendor id to that
 vendor's user id; it's kept by hand because vendors share company emails, so automatic matching isn't
 reliable. Set `DOORLOOP_VENDOR_USERS` to use a file elsewhere.
-| `list_accounts` | Chart of accounts, e.g. to pick the account for a parking or pet charge |
+| `list_accounts` | Chart of accounts, e.g. to pick the account for a parking or pet charge. Search by `name` (loose) and `class`; returns short rows (id, name, class, active) across every page |
 | `create_lease` | Creates a lease with new or existing tenants, rent, security deposit and recurring charges in one transaction (official `POST /leases/full`). Rent and deposit use DoorLoop's default accounts unless given. Portal invite, welcome SMS and late fees are off unless asked. Returns a preview unless `confirm` is true. |
-| `create_lease_charge` | Posts a one-time charge on a lease, e.g. a returned-check or cleaning fee (official `POST /lease-charges`). Accounts by id or name. Returns a preview with account names and the total unless `confirm` is true. |
+| `create_lease_charge` | Posts a one-time charge on a lease, e.g. a returned-check or cleaning fee (official `POST /lease-charges`). Accounts by id or name; names match loosely (case, plurals, partial words), and when several accounts match it lists them so Claude asks which one. Returns a preview with account names and the total unless `confirm` is true. |
 | `doorloop_get` | Any GET path, for exploring endpoints we haven't wrapped yet |
 
 Requests are throttled to stay under DoorLoop's ~50 requests/minute limit, and 429s are retried.

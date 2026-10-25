@@ -167,6 +167,7 @@ export function buildWorld() {
     { id: "4ecf8481e6c9ddd5f1a3cb96", name: "Parking", class: "REVENUE", active: true },
     { id: "ac00000000000000000c0001", name: "Cleaning Fee", class: "REVENUE", active: true },
     { id: "3d8491521e0b8dd968709f8c", name: "Pet Deposit", class: "LIABILITY", active: true },
+    { id: "ac00000000000000000c0002", name: "Late Fee (old)", class: "REVENUE", active: false },
     { id: account.rent, name: "Rent Income", class: "REVENUE", active: true, defaultAccountFor: ["RENTAL_INCOME"] },
     { id: account.deposit, name: "Security Deposits Held", class: "LIABILITY", active: true, defaultAccountFor: ["SECURITY_DEPOSIT"] },
   );
