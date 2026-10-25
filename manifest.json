@@ -4,14 +4,20 @@
   "display_name": "DoorLoop",
   "version": "0.1.0",
   "description": "Read and manage DoorLoop properties, units, tenants, leases and balances.",
-  "author": { "name": "Rico" },
+  "author": {
+    "name": "Rico"
+  },
   "server": {
     "type": "node",
     "entry_point": "dist/index.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/dist/index.js"],
-      "env": { "DOORLOOP_API_KEY": "${user_config.api_key}" }
+      "args": [
+        "${__dirname}/dist/index.js"
+      ],
+      "env": {
+        "DOORLOOP_API_KEY": "${user_config.api_key}"
+      }
     }
   },
   "user_config": {
@@ -24,16 +30,105 @@
     }
   },
   "tools": [
-    { "name": "whoami", "description": "Check the connection and show the key's owner" },
-    { "name": "list_properties", "description": "List properties" },
-    { "name": "get_property", "description": "Get one property" },
-    { "name": "list_units", "description": "List units" },
-    { "name": "get_unit", "description": "Get one unit" },
-    { "name": "list_tenants", "description": "List tenants" },
-    { "name": "get_tenant", "description": "Get one tenant" },
-    { "name": "list_leases", "description": "List leases" },
-    { "name": "get_lease", "description": "Get one lease" },
-    { "name": "get_rent_roll", "description": "Rent roll with balances" },
-    { "name": "doorloop_get", "description": "Read-only GET on any DoorLoop path" }
+    {
+      "name": "whoami",
+      "description": "Check the connection and show the key's owner"
+    },
+    {
+      "name": "list_properties",
+      "description": "List properties"
+    },
+    {
+      "name": "get_property",
+      "description": "Get one property"
+    },
+    {
+      "name": "list_units",
+      "description": "List units"
+    },
+    {
+      "name": "get_unit",
+      "description": "Get one unit"
+    },
+    {
+      "name": "list_tenants",
+      "description": "List tenants"
+    },
+    {
+      "name": "get_tenant",
+      "description": "Get one tenant"
+    },
+    {
+      "name": "list_leases",
+      "description": "List leases"
+    },
+    {
+      "name": "get_lease",
+      "description": "Get one lease"
+    },
+    {
+      "name": "get_rent_roll",
+      "description": "Rent roll with balances"
+    },
+    {
+      "name": "list_tasks",
+      "description": "List tasks"
+    },
+    {
+      "name": "get_task",
+      "description": "Get one task"
+    },
+    {
+      "name": "list_users",
+      "description": "List DoorLoop users on the team"
+    },
+    {
+      "name": "list_vendor_users",
+      "description": "Show which vendors have a DoorLoop login"
+    },
+    {
+      "name": "assign_task",
+      "description": "Assign a task to a vendor's login or team users (previews first)"
+    },
+    {
+      "name": "list_task_children",
+      "description": "List a task's subtasks and work orders"
+    },
+    {
+      "name": "get_task_files",
+      "description": "List a task's files and return its photos"
+    },
+    {
+      "name": "list_vendors",
+      "description": "List vendors"
+    },
+    {
+      "name": "get_vendor",
+      "description": "Get one vendor"
+    },
+    {
+      "name": "create_task",
+      "description": "Create a task or subtask (previews first)"
+    },
+    {
+      "name": "create_work_order",
+      "description": "Create a vendor work order under a task (previews first)"
+    },
+    {
+      "name": "list_accounts",
+      "description": "List chart-of-accounts entries"
+    },
+    {
+      "name": "create_lease",
+      "description": "Create a lease with tenants, rent and deposit (previews first)"
+    },
+    {
+      "name": "create_lease_charge",
+      "description": "Post a one-time charge on a lease (previews first)"
+    },
+    {
+      "name": "doorloop_get",
+      "description": "Read-only GET on any DoorLoop path"
+    }
   ]
 }

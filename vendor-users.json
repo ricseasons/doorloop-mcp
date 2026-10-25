@@ -1,0 +1,3 @@
+{
+  "_comment": "Vendor id (from list_vendors) -> that vendor's DoorLoop user id (from list_users). Only vendors with their own DoorLoop login. Confirmed by Rico; add entries as vendors get logins."
+}
