@@ -10,7 +10,9 @@
     "pack": "npm run build && npm prune --omit=dev && npx -y @anthropic-ai/mcpb pack && npm install",
     "set-key": "node scripts/set-key.mjs",
     "setup": "node scripts/setup.mjs",
-    "update": "git pull --ff-only && node scripts/setup.mjs"
+    "update": "git pull --ff-only && node scripts/setup.mjs",
+    "eval:tools": "npm run build && node --test evals/tools.test.mjs",
+    "eval": "npm run build && node evals/run.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {

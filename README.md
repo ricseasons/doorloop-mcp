@@ -121,6 +121,13 @@ fees), not by the amounts written in the lease. The API can't set per-lease late
 - [`doorloop-past-due-messages`](skills/doorloop-past-due-messages/SKILL.md): finds tenants with an overdue
   balance and drafts a message to each for review. It only drafts; nothing is sent to tenants.
 
+## Evals
+
+[`evals/`](evals/README.md) tests the tools and skills against a fake DoorLoop, never the real account.
+`npm run eval:tools` checks each tool's requests and results (free, a few seconds). `npm run eval` runs each
+skill end to end in headless Claude with a simulated person, then grades it with hard checks (e.g. nothing
+written without a preview and a yes, no work orders, drafts never sent) and an AI judge. It costs Claude tokens.
+
 ## Open items (paused 2026-10-22)
 
 - Create the test lease on 7307 Reservation Drive, Apt 2 from `test-fixtures/test-lease-7307-apt2.pdf`
