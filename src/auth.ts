@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 // Service/account names used for the OS keychain entry.
 export const KEYCHAIN_SERVICE = "doorloop-mcp";
@@ -9,7 +10,8 @@ export const KEYCHAIN_ACCOUNT = "api-key";
  * config file. Order:
  *   1. DOORLOOP_API_KEY env var (Claude Desktop injects this from its own
  *      keychain-backed storage when installed as an .mcpb extension).
- *   2. The OS keychain: macOS `security`, Linux `secret-tool`.
+ *   2. The OS keychain: macOS `security`, Linux `secret-tool`, Windows Credential
+ *      Manager (through scripts/wincred.ps1).
  */
 export function loadApiKey(): string {
   const fromEnv = process.env.DOORLOOP_API_KEY?.trim();
@@ -38,6 +40,14 @@ function readKeychain(): string | undefined {
         "secret-tool",
         ["lookup", "service", KEYCHAIN_SERVICE, "account", KEYCHAIN_ACCOUNT],
         { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+      ).trim();
+    }
+    if (process.platform === "win32") {
+      const script = fileURLToPath(new URL("../scripts/wincred.ps1", import.meta.url));
+      return execFileSync(
+        "powershell.exe",
+        ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script, "read"],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], windowsHide: true },
       ).trim();
     }
   } catch {

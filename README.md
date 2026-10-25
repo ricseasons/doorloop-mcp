@@ -12,57 +12,46 @@ The server looks for it in this order:
 
 1. `DOORLOOP_API_KEY` in the environment. Claude Desktop sets this from its own secure storage when
    you install the `.mcpb` extension.
-2. Your OS keychain (macOS Keychain, or GNOME Keyring/KWallet on Linux), under service `doorloop-mcp`.
+2. Your OS keychain (macOS Keychain, Windows Credential Manager, or GNOME Keyring/KWallet on Linux),
+   under service `doorloop-mcp`.
 
 Create a key in DoorLoop under **Settings > Zapier & API Keys** (included in DoorLoop's base plan). Give it a role with only
 the access the agent needs.
 
 ## Setup
 
+Works on a Mac or Windows PC (and Linux). You need a GitHub account with access to this private repo (ask
+Rico), a DoorLoop API key, and Claude Code: the terminal app, or the **Code** tab in the Claude desktop app.
+To install Claude Code, see [code.claude.com](https://code.claude.com/docs/en/setup).
+
 **Let Claude do it.** Open Claude Code in any folder and paste:
 
-> Set up the DoorLoop MCP server for me: clone github.com/ricseasons/doorloop-mcp and follow its
+> Install the DoorLoop tools for me: clone github.com/ricseasons/doorloop-mcp and follow its
 > INSTALL-AGENT.md.
 
 Claude checks for Node.js and Git, installs what's missing, and runs the setup. It only asks you for the
-things it can't do: sign in to GitHub, enter your DoorLoop API key in your own terminal, approve any admin
-prompt, and set up Claude in Chrome. [INSTALL-AGENT.md](INSTALL-AGENT.md) has the steps it follows.
+things it can't do: sign in to GitHub, type your DoorLoop API key into a hidden prompt in your own terminal
+window, approve any admin prompt, upload the skills in Claude Desktop, and set up Claude in Chrome.
+[INSTALL-AGENT.md](INSTALL-AGENT.md) has the steps it follows.
 
-**Or by hand.** On a Mac or Linux with Claude Code, one command does it all:
+To update later, paste: "Update my DoorLoop tools (doorloop-mcp) to the latest version."
+
+**Or by hand.** With Node.js 20+ and Git installed, in the doorloop-mcp folder:
 
 ```sh
+npm run set-key   # once: paste your API key (hidden) into the Mac Keychain or Windows Credential Manager
 npm run setup
 ```
 
-It installs and builds, asks for your API key if none is saved (hidden input, into the keychain), checks
-the key against DoorLoop, registers the server with Claude Code, and links the skills into
-`~/.claude/skills` so a `git pull` updates them. It's safe to run again. At the end it lists what's left by
-hand: Claude in Chrome for adding units, and signing in to DoorLoop in Chrome.
+Setup installs and builds, checks the key against DoorLoop, registers the server with Claude Code and with
+Claude Desktop (whichever are installed), links the skills into `~/.claude/skills` so updates reach them,
+and zips each skill into `skill-zips/` for uploading in Claude Desktop. It's safe to run again;
+`npm run update` pulls the latest code and reruns it. At the end it lists what's left by hand: uploading
+the skill zips in Claude Desktop, Claude in Chrome for adding units, and signing in to DoorLoop in Chrome.
 
-The steps below do the same by hand, or set up Claude Desktop instead.
-
-```sh
-npm install
-npm run build
-```
-
-### Claude Desktop
-
-```sh
-npm run pack          # builds doorloop-mcp.mcpb
-```
-
-Double-click `doorloop-mcp.mcpb` (or drag it onto Claude Desktop's Settings > Extensions). It asks for
-the API key and keeps it in secure storage.
-
-### Claude Code
-
-Store the key in your keychain once, then register the server. No key appears in the command or config.
-
-```sh
-npm run set-key
-claude mcp add doorloop -- node "$(pwd)/dist/index.js"
-```
+**Claude Desktop extension instead.** `npm run pack` builds `doorloop-mcp.mcpb`; double-click it (or drag it
+onto Claude Desktop's Settings > Extensions). It asks for the API key and keeps it in its own secure
+storage. Setup notices the extension and doesn't add a second copy.
 
 ## Tools
 

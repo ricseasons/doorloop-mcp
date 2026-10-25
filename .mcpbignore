@@ -3,3 +3,4 @@ scripts/
 tsconfig.json
 *.md
 .git/
+skill-zips/
