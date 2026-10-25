@@ -68,9 +68,9 @@ One row per lease, the columns above, and a **Flags** column. Flag:
   id rather than creating a duplicate.
 
 Map each recurring charge to an income account with `list_accounts` (e.g. Parking, Pet Fees, Utility)
-and show the account name in the table. Accounts come 100 per page, so read every page (`page_number`
-2, 3, ...) before deciding none fits. Use a REVENUE account for a charge, not a LIABILITY one like
-"Pet Deposit". If none fits, flag it and ask.
+and show the account name in the table. Search with `name` (e.g. `list_accounts name="pet" class="REVENUE"`)
+rather than paging the whole chart; the search covers every page. Use a REVENUE account for a charge, not
+a LIABILITY one like "Pet Deposit". If none fits, or several do, flag it and ask.
 
 Late fees: every lease gets `automaticLateFees: true`, so DoorLoop charges late fees by its own
 schedule (company defaults, or the property's if it's customized). The lease's late-fee clause is not

@@ -119,11 +119,51 @@ describe("create_lease_charge", () => {
     assert.deepEqual(writes(), []);
   });
 
-  test("a near-miss account name is refused, not guessed", async () => {
-    const res = await call("create_lease_charge", { lease: IDS.lease.maria, lines: [{ account: "Late Fee", amount: 25 }], confirm: true });
-    assert.equal(res.isError, true);
-    assert.match(res.text, /No accounts match "Late Fee"/);
+  test("matches account names loosely: case, plurals and partial words", async () => {
+    const { data } = await call("create_lease_charge", {
+      lease: IDS.lease.maria,
+      lines: [{ account: "Late Fee", amount: 25 }, { account: "cleaning", amount: 200 }, { account: "pet-fee", amount: 50 }],
+    });
+    assert.deepEqual(data.accounts.map((a) => a.accountName), ["Late Fees", "Cleaning Fee", "Pet Fees"]);
+    assert.deepEqual(data.request.lines.map((l) => l.account), [IDS.account.lateFees, "ac00000000000000000c0001", "6e3711c00afea8cc87496907"]);
     assert.deepEqual(writes(), []);
+  });
+
+  test("several matching accounts are listed for the user to pick, not guessed", async () => {
+    const res = await call("create_lease_charge", { lease: IDS.lease.maria, lines: [{ account: "pet", amount: 25 }], confirm: true });
+    assert.equal(res.isError, true);
+    assert.match(res.text, /2 accounts match "pet"/);
+    assert.match(res.text, /Pet Fees \(REVENUE/);
+    assert.match(res.text, /Pet Deposit \(LIABILITY/);
+    assert.match(res.text, /Ask the user which one/);
+    assert.deepEqual(writes(), []);
+  });
+
+  test("an unknown account name is refused", async () => {
+    const res = await call("create_lease_charge", { lease: IDS.lease.maria, lines: [{ account: "Lawn care", amount: 25 }], confirm: true });
+    assert.equal(res.isError, true);
+    assert.match(res.text, /No accounts match "Lawn care"/);
+    assert.deepEqual(writes(), []);
+  });
+});
+
+describe("list_accounts", () => {
+  test("searches by name loosely and returns short rows", async () => {
+    const { data } = await call("list_accounts", { name: "late fee" });
+    assert.equal(data.total, 1);
+    assert.deepEqual(data.data, [{ id: IDS.account.lateFees, name: "Late Fees", class: "REVENUE", active: true }]);
+  });
+
+  test("filters by class and skips inactive accounts unless asked", async () => {
+    const revenue = (await call("list_accounts", { class: "revenue" })).data;
+    assert.deepEqual(revenue.data.map((a) => a.name), ["Late Fees", "Pet Fees", "Parking", "Cleaning Fee", "Rent Income"]);
+    const all = (await call("list_accounts", { class: "REVENUE", name: "late", include_inactive: true })).data;
+    assert.deepEqual(all.data.map((a) => a.name), ["Late Fees", "Late Fee (old)"]);
+  });
+
+  test("reads every page so accounts past the first 100 are found", async () => {
+    const { data } = await call("list_accounts", { name: "Rent Income" });
+    assert.deepEqual(data.data[0].defaultAccountFor, ["RENTAL_INCOME"]);
   });
 });
 
