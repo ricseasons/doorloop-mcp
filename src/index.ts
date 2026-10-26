@@ -399,14 +399,12 @@ server.registerTool(
   },
 );
 
-listTool("list_accounts", "/accounts", "List chart-of-accounts entries, e.g. to pick the account for a lease charge.");
-
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("YYYY-MM-DD");
 const frequency = z
   .enum(["Daily", "Weekly", "Every2Weeks", "Monthly", "Every2Months", "Quarterly", "Every6Months", "Annually"])
   .default("Monthly");
 
-type Account = { id: string; name: string; class?: string; defaultAccountFor?: string[] };
+type Account = { id: string; name: string; class?: string; active?: boolean; defaultAccountFor?: string[] };
 
 // Reads the whole chart of accounts; the API returns at most 100 per page.
 async function allAccounts(): Promise<Account[]> {
@@ -420,6 +418,77 @@ async function allAccounts(): Promise<Account[]> {
     if (!data.length || accounts.length >= total) return accounts;
   }
 }
+
+// Lowercases, drops punctuation and a plural "s", so "Late Fee" and "late-fees" compare equal.
+function words(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .map((w) => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w));
+}
+
+// Accounts whose name matches loosely: the same words ignoring case, punctuation and plurals, or else
+// every word of the query found in the name, so "pet" finds "Pet Fees" and "Pet Deposit".
+function looseMatches(accounts: Account[], query: string): Account[] {
+  const q = words(query);
+  if (!q.length) return [];
+  const same = accounts.filter((a) => words(a.name).join(" ") === q.join(" "));
+  if (same.length) return same;
+  return accounts.filter((a) => {
+    const name = words(a.name);
+    return q.every((w) => name.some((n) => n.startsWith(w)));
+  });
+}
+
+// Resolves an account given by id or name. An exact id or name wins; otherwise one loose match is used,
+// and several are refused with the choices listed so the user can pick.
+function resolveAccount(accounts: Account[], given: string): Account {
+  const exact = accounts.filter((a) => a.id === given || a.name.trim().toLowerCase() === given.trim().toLowerCase());
+  const matches = exact.length ? exact : looseMatches(accounts.filter((a) => a.active !== false), given);
+  if (matches.length === 1) return matches[0];
+  if (!matches.length) throw new Error(`No accounts match "${given}". Search with list_accounts and pass its name or id.`);
+  const choices = matches.slice(0, 10).map((a) => `${a.name} (${a.class ?? "?"}, id ${a.id})`);
+  throw new Error(
+    `${matches.length} accounts match "${given}": ${choices.join("; ")}${matches.length > 10 ? "; ..." : ""}. ` +
+      "Ask the user which one, then pass its exact name or id.",
+  );
+}
+
+server.registerTool(
+  "list_accounts",
+  {
+    description:
+      "List chart-of-accounts entries (id, name, class, active), e.g. to pick the account for a lease charge. " +
+      "The chart is long, so search by name and/or class instead of paging through it all.",
+    inputSchema: {
+      name: z.string().optional().describe("Loose name search, e.g. \"late fee\" or \"pet\""),
+      class: z.string().optional().describe("ASSET, LIABILITY, EQUITY, REVENUE or EXPENSE"),
+      include_inactive: z.boolean().default(false),
+      ...paging,
+    },
+    annotations: { readOnlyHint: true },
+  },
+  async ({ name, class: cls, include_inactive, page_number = 1, page_size = 100 }) => {
+    let accounts = await allAccounts();
+    if (!include_inactive) accounts = accounts.filter((a) => a.active !== false);
+    if (cls) accounts = accounts.filter((a) => a.class?.toUpperCase() === cls.toUpperCase());
+    if (name) {
+      const exact = accounts.filter((a) => a.name.trim().toLowerCase() === name.trim().toLowerCase());
+      accounts = exact.length ? exact : looseMatches(accounts, name);
+    }
+    const data = accounts
+      .slice((page_number - 1) * page_size, page_number * page_size)
+      .map(({ id, name, class: c, active, defaultAccountFor }) => ({
+        id,
+        name,
+        class: c,
+        active,
+        ...(defaultAccountFor?.length && { defaultAccountFor }),
+      }));
+    return json({ data, total: accounts.length });
+  },
+);
 
 // Finds the account DoorLoop marks as the default for a purpose, e.g. RENTAL_INCOME.
 async function defaultAccount(purpose: string): Promise<string> {
@@ -540,7 +609,8 @@ server.registerTool(
   {
     description:
       "Post a one-time charge on a lease, e.g. a returned-check fee, cleaning fee or repair. Accounts can " +
-      "be given by id or by name (e.g. \"Cleaning Fee\"). Without confirm=true this only returns the " +
+      "be given by id or by name; names match loosely (\"late fee\" finds \"Late Fees\"), and when several " +
+      "accounts match the tool lists them so you can ask the user which one. Without confirm=true this only returns the " +
       "request it would send, with account names and the total, so show that to the user and get their " +
       "OK before confirming.",
     inputSchema: {
@@ -550,7 +620,7 @@ server.registerTool(
       lines: z
         .array(
           z.object({
-            account: z.string().describe("Account id, or its exact name from list_accounts"),
+            account: z.string().describe("Account id or name, e.g. \"Late Fees\" (case and plurals don't matter)"),
             amount: z.number().positive(),
             memo: z.string().max(1000).optional(),
           }),
@@ -563,14 +633,8 @@ server.registerTool(
   async ({ lease, date: chargeDate, memo, lines, confirm }) => {
     const accounts = await allAccounts();
     const resolved = lines.map((line) => {
-      const key = line.account.trim().toLowerCase();
-      const matches = accounts.filter((a) => a.id === line.account || a.name.trim().toLowerCase() === key);
-      if (matches.length !== 1) {
-        throw new Error(
-          `${matches.length ? "Several" : "No"} accounts match "${line.account}"; pass the account id from list_accounts.`,
-        );
-      }
-      return { ...line, account: matches[0].id, accountName: matches[0].name, accountClass: matches[0].class };
+      const match = resolveAccount(accounts, line.account);
+      return { ...line, account: match.id, accountName: match.name, accountClass: match.class };
     });
 
     const body = {
