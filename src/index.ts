@@ -435,8 +435,9 @@ server.registerTool(
   {
     description:
       "Create a lease with its tenants, monthly rent, security deposit and other recurring charges in one " +
-      "step. Tenants can be existing tenant ids or new people. Late fees, when on, always follow DoorLoop's " +
-      "company late-fee settings; the lease's own late-fee amounts can't be set. Without confirm=true this only returns the " +
+      "step. Tenants can be existing tenant ids or new people. Late fees, when on, follow DoorLoop's " +
+      "company late-fee settings; a lease's own late-fee amounts can only be set afterwards in DoorLoop's web app " +
+      "(doorloop-web-forms skill). Without confirm=true this only returns the " +
       "request it would send, so show that to the user and get their OK before confirming.",
     inputSchema: {
       property: z.string().describe("Property id"),
@@ -490,7 +491,7 @@ server.registerTool(
       automaticLateFees: z
         .boolean()
         .default(false)
-        .describe("Charge late fees by DoorLoop's late-fee settings. The lease's own amounts can't be set here."),
+        .describe("Charge late fees by DoorLoop's late-fee settings. Custom amounts for this lease are set in the web app, not here."),
       confirm: z.boolean().default(false).describe("Actually create it. Leave false to preview."),
     },
     annotations: { destructiveHint: false, idempotentHint: false },

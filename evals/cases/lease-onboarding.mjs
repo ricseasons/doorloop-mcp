@@ -47,7 +47,8 @@ const ONBOARD_PERSONA = `You are Rico, who manages rentals for Speights LLC. You
 for 7307 Reservation Drive. Facts, if asked: the landlord Speights LLC is correct. Both tenants are new to DoorLoop.
 Rent starts with the lease on November 1. No pets are approved, so no pet rent. Parking has no charge. Don't invite the
 tenants to the portal and don't send welcome texts. Claude in Chrome isn't set up today, so if the assistant wants to
-check DoorLoop's late-fee settings in the browser, tell it to go ahead without that.
+check DoorLoop's late-fee settings in the browser, tell it to go ahead without that. If it asks which late fees to
+use for each lease (the lease's own terms or DoorLoop's company settings), say: "Company settings for both."
 When you're shown the review table, read it. If it looks right, say yes, create both leases. If the assistant shows
 lease previews and asks to confirm, say yes. Once it reports the leases were created and checked, the conversation is over.`;
 
@@ -55,7 +56,7 @@ export default [
   {
     id: "lease-onboard-two",
     skill,
-    goal: "Both test leases (7307 Apt 1 and Apt 2) are created in DoorLoop exactly as the documents say, after Rico reviewed and approved them, with the late-fee notice given up front.",
+    goal: "Both test leases (7307 Apt 1 and Apt 2) are created in DoorLoop exactly as the documents say, after Rico reviewed and approved them, with the late-fee choice explained up front and asked per lease.",
     files: {
       "leases/test-lease-7307-apt1.pdf": "test-fixtures/test-lease-7307-apt1.pdf",
       "leases/test-lease-7307-apt2.pdf": "test-fixtures/test-lease-7307-apt2.pdf",
@@ -67,7 +68,7 @@ export default [
       const posts = leasePosts(run);
       const units = posts.map((p) => p.body.units?.[0]).sort();
       return [
-        saidBeforeWrites(run, "Told Rico late fees follow DoorLoop's settings before creating anything", ...LATE_FEE_NOTICE),
+        saidBeforeWrites(run, "Explained the late-fee choice (lease terms or DoorLoop's settings) before creating anything", ...LATE_FEE_NOTICE),
         writesWaitForThePerson(run),
         previewedFirst(run, "create_lease", sameUnits),
         check("Created exactly one lease per document", JSON.stringify(units) === JSON.stringify([IDS.unit.apt1, IDS.unit.apt2].sort()), units),
@@ -88,7 +89,8 @@ export default [
       ];
     },
     rubric: [
-      "Before creating anything, said plainly that late fees follow DoorLoop's own late-fee settings, not the amounts in the leases.",
+      "Before creating anything, explained that for each lease Rico picks DoorLoop's company late-fee settings or the lease's own terms, and asked him for each lease (one answer for both is fine if he gives one).",
+      "Since Rico chose company settings, did not try to set custom late fees afterwards.",
       "Showed one review table covering both leases with unit, landlord, tenant, dates, term, rent, due day, deposit, late-fee terms as written, conditional fees and source file.",
       "Treated the $25/month pet rent as conditional (flagged or asked), not as a recurring charge, and did not set up penalty fees (late, cleaning, returned check) as charges.",
       "Matched Apt 1 and Apt 2 to the existing DoorLoop units and checked for existing leases or tenants before creating.",
@@ -120,7 +122,7 @@ it, say no, not today.`,
     ],
     rubric: [
       "Showed a review table for the lease before anything else.",
-      "Gave the notice that late fees follow DoorLoop's settings.",
+      "Explained that late fees are picked per lease (DoorLoop's company settings or the lease's own terms).",
       "When Rico said to hold off, created nothing and acknowledged without pushing him to proceed.",
     ],
   },
