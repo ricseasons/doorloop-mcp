@@ -1,12 +1,12 @@
 ---
 name: doorloop-web-forms
-description: Add units to a DoorLoop property, or create a new property with its units, by filling in the DoorLoop web app's forms with Claude in Chrome. Use when someone asks to add, create or set up units or a new property in DoorLoop. The DoorLoop API refuses these for API keys (405 Access Denied), so they go through the browser.
+description: Add units to a DoorLoop property, create a new property with its units, or give one lease its own late fees, by filling in the DoorLoop web app's forms with Claude in Chrome. Use when someone asks to add, create or set up units or a new property in DoorLoop, or to change, customize or read a lease's late fees. The DoorLoop API can't do these with an API key, so they go through the browser.
 ---
 
 # DoorLoop web forms (Claude in Chrome)
 
-DoorLoop's API can't create units or properties with an API key, so this skill fills in the web app's
-own forms in the person's Chrome, using their existing DoorLoop login. Use the `doorloop` MCP tools for
+DoorLoop's API can't create units or properties with an API key, and can only switch a lease's
+automatic late fees on or off (not set amounts), so this skill fills in the web app's own forms in the person's Chrome, using their existing DoorLoop login. Use the `doorloop` MCP tools for
 everything else (looking up ids, checking results).
 
 ## Before you start
@@ -23,6 +23,7 @@ everything else (looking up ids, checking results).
 3. **Pick the route.**
    - 1–3 units on an existing property: **Add a unit** below, once per unit.
    - A new property: **New property with units** below. It takes many units in one form.
+   - A lease's own late fees, or reading the company late-fee schedule: **Late fees** below.
    - Many units for an existing property: there's no self-serve import in DoorLoop. Use **Add a unit**
      repeatedly (about 30–60 seconds each) and tell the person roughly how long it will take, or suggest
      asking DoorLoop support to import a spreadsheet.
@@ -70,6 +71,64 @@ Click **Next** after each one.
 
 Show the person a summary of every step, then click **Finish** after their OK. Confirm with
 `list_properties` and `list_units` (`filter_property`) and report the new ids.
+
+## Late fees
+
+All late-fee settings live under Settings, not on the lease's own pages (the lease's Settings tab and
+**Manage lease** > **Edit** have no late-fee fields).
+
+### Read the company schedule
+
+Go to `https://<company>.app.doorloop.com/settings/general-settings/edit/online-payment-fees?fee=late-fees`
+(Settings > Company defaults > **Fees** > **Late fees** tab; the address says online-payment-fees even on
+this tab). Read, don't change:
+
+- **Late fee schedule**: one card per fee, applied in order. Each has **Fee type** (Flat fee ($) or
+  Percentage (%)), **Fee ($)**, **Frequency** (Once, Daily, Weekly, Monthly), **Grace period (days)**,
+  **Revenue account** and **Description**. A card's header sums it up, e.g. "1 · $75.00 · ONCE · 1st Late Fee".
+- **Fee limitations & restrictions**: toggles for **Maximum daily fees**, **Maximum monthly fees**,
+  **Minimum balance to apply fees**, **Apply only to the most recent charge**, and **Apply only on
+  specific outstanding charges** (with **Charges to consider** and **Accounts**, e.g. Rent only).
+- **Late fee reminders**: channels (Email, SMS, Push notifications) before and after a fee is charged.
+
+Summarize it in one line per fee, e.g. "$75 once after 7 days grace, then $150 once after 15 days, rent
+only". Company settings change every lease that isn't customized, so never edit this page unless the
+person explicitly asks for a company-wide change.
+
+### Set a lease's late fees
+
+1. From the company Late fees tab, click **Customize** (in the "Customize by property & lease" card).
+   This opens "Late fees · Properties"; switch to the **Leases** tab
+   (`/settings/general-settings/edit/online-payment-fees/overrides/leases?fee=late-fees`).
+2. Find the lease with **Search leases...** (property and unit, or tenant name). The **Customization**
+   column says **Company default** or **Customized**. Click the row; a drawer opens titled
+   "Late fees · <property> > <unit>". It has no address of its own.
+3. The drawer starts as a copy of the company settings (or the lease's current custom ones). Change it to
+   match what the person approved:
+   - Keep **Automatic late fees** on. Turning it off stops all late fees on this lease; only do that if
+     asked.
+   - **Late fee schedule**: edit each card's **Fee type**, **Fee ($)**, **Frequency**, **Grace period
+     (days)**, **Revenue account** (normally **Late Fees**) and **Description**. Use **+ Add late fee**
+     for another fee, and a card's ⋮ menu > **Delete** to remove one. Translate lease wording like this:
+     "$50 if rent is paid after the 5th" → Flat, $50, Once, grace 4 days if rent is due on the 1st
+     (grace days count from the due date; check it in the Simulation and tell the person which you used); "$10 per day after that" → a second card, Flat, $10, Daily, same
+     grace; "5% of rent" → Percentage.
+   - **Fee limitations & restrictions**: a cap in the lease ("late fees won't exceed $200 a month") →
+     **Maximum monthly fees** on, with the amount. Leave the other toggles as they are unless the lease says
+     otherwise.
+   - Leave **Late fee reminders** as they are unless asked.
+4. The **Simulation** at the bottom shows what a sample late payment would be charged. Use **Edit inputs**
+   to try the lease's rent and a delinquency past the last grace period, and check the result matches the
+   lease.
+5. Take a screenshot of the schedule and the simulation, show the person, and click **Save** (bottom of
+   the drawer; it stays greyed out until something changes) only after their yes. **Cancel** or the × closes
+   without saving.
+6. Check that the lease's **Customization** now says **Customized**, reopen the drawer, and confirm the
+   values stuck. Report the lease, the fees set, and that it now overrides the company settings.
+
+Not mapped yet (describe what you see the first time, and say this skill needs updating): a way to put a
+customized lease back on the company default, the amount boxes behind the limitation toggles, and the
+Properties tab of the same Customize page, which sets a property's own late fees.
 
 ## Good habits
 

@@ -1,6 +1,6 @@
 ---
 name: doorloop-lease-onboarding
-description: Onboard existing leases into DoorLoop from a folder of lease documents (PDF, Word or scans). Reads each lease, builds one review table of units, tenants, dates, rent and deposits, flags gaps, then creates missing units (through Chrome) and the leases with their tenants and rent (through the DoorLoop API) after the person's OK. Use when someone wants to load, import, onboard or set up leases, tenants or a rent roll in DoorLoop from documents.
+description: Onboard existing leases into DoorLoop from a folder of lease documents (PDF, Word or scans). Reads each lease, builds one review table of units, tenants, dates, rent and deposits, flags gaps, then creates missing units (through Chrome), the leases with their tenants and rent (through the DoorLoop API), and any per-lease late fees (through Chrome) after the person's OK. Use when someone wants to load, import, onboard or set up leases, tenants or a rent roll in DoorLoop from documents.
 ---
 
 # DoorLoop lease onboarding
@@ -11,9 +11,10 @@ the person has checked a review table.
 Tools: the `doorloop` MCP server (`list_*`, `get_rent_roll`, `list_accounts`, `create_lease`) and, for
 units that don't exist yet, the [doorloop-web-forms](../doorloop-web-forms/SKILL.md) skill.
 
-**Late fees always follow DoorLoop's settings, not the lease.** Tell the person this at the start, in
-plain words: "Late fees will be charged by DoorLoop's standard late-fee settings, not the amounts written
-in the leases." Leases are created with automatic late fees on, and nothing here changes the amounts.
+**Late fees are chosen per lease.** Tell the person this at the start, in plain words: "For each lease
+you'll pick whether DoorLoop charges late fees by its standard company settings or by the amounts written
+in that lease." The API can only switch automatic late fees on; a lease's own amounts are set afterwards
+in DoorLoop's web form through Chrome (doorloop-web-forms, **Set a lease's late fees**).
 
 ## 1. Ask for the inputs
 
@@ -72,15 +73,23 @@ and show the account name in the table. Search with `name` (e.g. `list_accounts 
 rather than paging the whole chart; the search covers every page. Use a REVENUE account for a charge, not
 a LIABILITY one like "Pet Deposit". If none fits, or several do, flag it and ask.
 
-Late fees: every lease gets `automaticLateFees: true`, so DoorLoop charges late fees by its own
-schedule (company defaults, or the property's if it's customized). The lease's late-fee clause is not
-copied into DoorLoop and isn't a reason to skip or hold a lease. The API can't read that schedule (405),
-so if Chrome is available, read it once (doorloop-web-forms skill): Settings > Company defaults >
+Late fees: every lease gets `automaticLateFees: true`. The API can't read DoorLoop's late-fee schedule
+(405), so if Chrome is available, read it once (doorloop-web-forms skill): Settings > Company defaults >
 **Fees** > **Late fees** tab (`/settings/general-settings/edit/online-payment-fees?fee=late-fees`).
-In the review table, show the lease's terms next to it as information, e.g. "Lease says $25 after 3 days
-+ $5/day; DoorLoop will charge $75 after 7 days, then $150 after 15 days", and repeat the notice that
-DoorLoop's settings apply. Don't offer to change the amounts per lease. Only turn automatic late fees off
-for a lease if the person explicitly asks.
+In the review table, add a **Late fees** column that shows both, e.g. "Lease: $25 after 3 days + $5/day.
+Company: $75 after 7 days, then $150 after 15 days", and ask the person, lease by lease, which to use:
+
+- **Company settings**: nothing more to do after the lease is created.
+- **Lease terms**: after the lease is created, set that lease's own late fees in DoorLoop's web form
+  (step 5b). Turn the lease's clause into DoorLoop's terms first (grace days, a one-time fee, a daily
+  fee, a cap) and show that translation. If the clause can't be expressed in DoorLoop's form (e.g. a
+  percentage when the form only takes dollars), flag it and ask what to set.
+- If the lease has no late-fee clause, say so and suggest company settings.
+
+Don't pick for the person, and don't assume one answer covers every lease unless they say so ("use the
+company settings for all of them"). A missing answer isn't a reason to hold a lease: create it, and
+leave its late fees on the company settings until they decide. Only turn automatic late fees off for a
+lease if the person explicitly asks.
 
 Returned-payment fees: DoorLoop charges these automatically from the same Fees page (**Returned payment
 fees** tab), so don't post them by hand with `create_lease_charge` for payments made through DoorLoop.
@@ -117,6 +126,13 @@ Dates in the past: DoorLoop will post rent charges from the start date, so an ol
 balance for every month since it started. Point this out before confirming a lease that started more
 than a month ago, and ask whether to start rent from the current month instead (`rent.start`).
 
+## 5b. Set per-lease late fees
+
+For each created lease where the person chose **Lease terms**, use doorloop-web-forms, **Set a lease's
+late fees**, with the lease id from step 5. Show the amounts you'll enter for all of them as one list,
+and get a yes before saving; a yes on the leases is not a yes on the late fees. Without Chrome, list the
+leases and amounts still to set by hand and say where (the lease's late-fee settings in DoorLoop).
+
 ## 6. Check and report
 
 Run `get_rent_roll` with `filter_property` and compare it with the table: each unit's lease, rent and
@@ -124,5 +140,6 @@ deposit. Then report:
 
 - leases created (lease id, unit, tenants) and tenants created;
 - units added through Chrome;
+- late fees per lease: company settings, or the custom amounts set (and any still to set by hand);
 - rows skipped and why;
 - anything that doesn't match the documents.
