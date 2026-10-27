@@ -1,12 +1,20 @@
 ---
 name: doorloop-lease-onboarding
-description: Onboard existing leases into DoorLoop from a folder of lease documents (PDF, Word or scans). Reads each lease, builds one review table of units, tenants, dates, rent and deposits, flags gaps, then creates missing units (through Chrome), the leases with their tenants and rent (through the DoorLoop API), and any per-lease late fees (through Chrome) after the person's OK. Use when someone wants to load, import, onboard or set up leases, tenants or a rent roll in DoorLoop from documents.
+description: Onboard existing leases into DoorLoop from a spreadsheet (xlsx or csv rent roll or lease list) or a folder of lease documents (PDF, Word or scans). Reads each lease or row, builds one review table of units, tenants, dates, rent and deposits, flags gaps, then creates missing units (through Chrome), the leases with their tenants and rent (through the DoorLoop API), and any per-lease late fees (through Chrome) after the person's OK. Use when someone wants to load, import, onboard or set up leases, tenants or a rent roll in DoorLoop from a spreadsheet or documents.
 ---
 
 # DoorLoop lease onboarding
 
-Goal: a folder of signed leases in, the same leases set up in DoorLoop out, with nothing created until
-the person has checked a review table.
+Goal: a spreadsheet of leases or a folder of signed leases in, the same leases set up in DoorLoop out,
+with nothing created until the person has checked a review table.
+
+Two kinds of input, same review and create steps:
+
+- **Spreadsheet** (xlsx, xls or csv): one row per unit or lease. Read it as in step 2a.
+- **Lease documents** (a folder of PDFs, Word files or scans): read each one as in step 2b.
+
+Spreadsheets of real tenants are private: read them where they are, never copy them into a repository,
+and quote only the rows you need in the conversation.
 
 Tools: the `doorloop` MCP server (`list_*`, `get_rent_roll`, `list_accounts`, `create_lease`) and, for
 units that don't exist yet, the [doorloop-web-forms](../doorloop-web-forms/SKILL.md) skill.
@@ -18,12 +26,60 @@ in DoorLoop's web form through Chrome (doorloop-web-forms, **Set a lease's late 
 
 ## 1. Ask for the inputs
 
-- The folder with the lease files.
+- The spreadsheet, or the folder with the lease files. A spreadsheet can come with lease PDFs too (e.g. a
+  "Lease Source File" column); the spreadsheet is the source and the PDFs are only opened when a value is
+  missing or the person asks.
 - The DoorLoop property they belong to. Find its id with `list_properties`. If the property doesn't exist
   yet, it's created later with the New property wizard (doorloop-web-forms), together with its units.
 - Anything that applies to every lease, if they know it, e.g. "rent is due on the 1st" or "no deposits".
 
-## 2. Read every lease
+## 2a. Read a spreadsheet
+
+Open it with the xlsx skill (pandas or openpyxl, values not formulas); a csv can be read directly.
+
+1. **Pick the sheet.** List every sheet with its header row and row count. Use the one with one row per
+   unit or lease and columns like unit, tenant, rent, deposit and dates. Summary, exception, delinquency or
+   notes sheets are not the source. If two sheets hold the same rows (e.g. one sorted by lease end), compare
+   them: say whether every cell matches, use the one in unit order, and ignore extra columns that are empty.
+   If they differ, show the differences and ask which to use.
+2. **Map the columns** to the fields in the table below and show the mapping before the review table, so
+   the person can correct it. Typical headers:
+
+   | Spreadsheet header (examples) | Field |
+   | --- | --- |
+   | Unit, Apt, Unit # | Unit |
+   | Tenant(s), Resident, Name | Tenants |
+   | Lease Base Rent, Rent, Monthly Rent | Monthly rent |
+   | M2M Clause Rent, Month-to-month rent | Rent once month-to-month (see below) |
+   | Security Deposit, Deposit | Security deposit |
+   | Lease Start, Move-in / Lease End, Expiration | Start date, end date |
+   | Lease Status, Term (Fixed, M2M, "No lease file") | Term |
+   | Email, Phone | Tenant email / phone |
+   | Lease Source File | Source |
+
+   Columns that describe the past or an audit (an old rent roll's rent or status, variance, delinquency,
+   risk, exception notes) are not imported. Use them as flags in the review table: a rent that differs
+   from an older rent roll, a RED/YELLOW risk note, a notice or vacancy status. **Delinquency or balance
+   columns are never posted as charges** unless the person asks for opening balances.
+3. **Read each row** into the fields of step 2b's table. In a spreadsheet:
+   - **Tenants**: several people in one cell are split on commas, "and" or "&", then each into first and
+     last name. A middle initial stays with the first name ("Mary A. Smith" is Mary A. / Smith). Show the
+     split for anything that isn't two or three plain words.
+   - **Dates**: Excel dates or text, written as YYYY-MM-DD.
+   - **Term**: "Fixed" is Fixed. "M2M", "month-to-month" or "at will" is AtWill.
+   - **Month-to-month rent**: for an AtWill lease, use the month-to-month rent column when it has a value
+     (it's what the lease says the tenant pays after the term), else the base rent. Show both in the table.
+   - A row with no lease ("No lease file", no tenant, vacant) is skipped and listed as skipped, not created.
+   - A Fixed lease whose end date has passed: flag it and ask whether it was renewed (new dates) or is now
+     month-to-month. Don't create it as an expired Fixed lease.
+   - Anything the sheet doesn't have (email, phone, due day, late-fee terms, other charges) is blank, not
+     guessed. Ask once for defaults that apply to every row (e.g. "rent due on the 1st, no other charges").
+     Late-fee terms that aren't in the sheet show as "not in spreadsheet" (see Late fees in step 3).
+   - Landlord: a spreadsheet usually doesn't name one. Confirm the landlord once for the whole property.
+
+Then go to step 3.
+
+## 2b. Read every lease document
 
 Open each file (use the pdf or docx skill for PDFs and Word files; read scans as images). For each lease,
 pull out:
@@ -85,6 +141,9 @@ Company: $75 after 7 days, then $150 after 15 days", and ask the person, lease b
   fee, a cap) and show that translation. If the clause can't be expressed in DoorLoop's form (e.g. a
   percentage when the form only takes dollars), flag it and ask what to set.
 - If the lease has no late-fee clause, say so and suggest company settings.
+- From a spreadsheet with no late-fee column, say "not in spreadsheet" and suggest company settings. If
+  the person wants a lease's own terms, open that lease's source PDF (if there is one) and read its
+  clause.
 
 Don't pick for the person, and don't assume one answer covers every lease unless they say so ("use the
 company settings for all of them"). A missing answer isn't a reason to hold a lease: create it, and
@@ -118,6 +177,8 @@ go; if any part fails, nothing is saved.
   Turning on the portal invites tenants by email, so ask first and say who would get one.
 
 You can show several previews together, as a short list (unit, tenants, dates, rent, deposit, charges).
+With many rows (a whole property's spreadsheet), work in batches of about 10: preview a batch, get a yes,
+confirm it, then move on, so one answer never covers dozens of leases the person hasn't seen.
 Then stop and wait: an OK on the review table is not an OK to create. Never preview and confirm in the same
 reply. Once the person says yes to the previews, call each one again with `confirm: true`, one at a time. If one fails, report
 the error and carry on with the rest only if the person agrees.
@@ -142,4 +203,4 @@ deposit. Then report:
 - units added through Chrome;
 - late fees per lease: company settings, or the custom amounts set (and any still to set by hand);
 - rows skipped and why;
-- anything that doesn't match the documents.
+- anything that doesn't match the documents or spreadsheet.

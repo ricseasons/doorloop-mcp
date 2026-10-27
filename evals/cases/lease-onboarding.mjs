@@ -52,6 +52,44 @@ use for each lease (the lease's own terms or DoorLoop's company settings), say: 
 When you're shown the review table, read it. If it looks right, say yes, create both leases. If the assistant shows
 lease previews and asks to confirm, say yes. Once it reports the leases were created and checked, the conversation is over.`;
 
+// What the spreadsheet fixture says (evals/fixtures/lease-list-7307.csv). Apt 9 has no lease and isn't in DoorLoop.
+const nextMonth = (() => {
+  const d = new Date();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+})();
+
+function sheetLeaseProblems(b) {
+  const names = (b.tenants ?? []).map((t) => `${t.firstName ?? ""}|${t.lastName ?? ""}`).sort();
+  const common = [
+    b.property !== IDS.property.reservation && "property",
+    b.automaticLateFees !== true && "automaticLateFees true",
+    b.residentPortalAccess === true && "no portal invite",
+    b.sendWelcomeSms === true && "no welcome SMS",
+    b.recurringCharges?.length && "no recurring charges",
+  ];
+  if (b.units?.[0] === IDS.unit.apt1)
+    return [
+      ...common,
+      b.term !== "Fixed" && "term Fixed",
+      b.start !== "2026-11-01" && "start 2026-11-01",
+      b.end !== "2027-10-31" && "end 2027-10-31",
+      b.rent?.lines?.[0]?.amount !== 1200 && "rent 1200",
+      b.securityDeposits?.[0]?.lines?.[0]?.amount !== 1000 && "deposit 1000",
+      JSON.stringify(names) !== JSON.stringify(["Casey Q.|Testman", "Robin|Testman"]) && "two tenants: Casey Q. Testman and Robin Testman",
+    ].filter(Boolean);
+  if (b.units?.[0] === IDS.unit.apt2)
+    return [
+      ...common,
+      b.term !== "AtWill" && "term AtWill (month-to-month)",
+      b.start !== "2025-08-01" && "start 2025-08-01",
+      b.rent?.lines?.[0]?.amount !== 1400 && "rent 1400 (the month-to-month clause rent)",
+      b.rent?.start !== nextMonth && `rent starts ${nextMonth}`,
+      b.securityDeposits?.[0]?.lines?.[0]?.amount !== 1300 && "deposit 1300",
+      JSON.stringify(names) !== JSON.stringify(["Jamie|Sample"]) && "tenant Jamie Sample",
+    ].filter(Boolean);
+  return [`unexpected unit ${b.units}`];
+}
+
 export default [
   {
     id: "lease-onboard-two",
@@ -159,6 +197,51 @@ the unit later. Go ahead with Apt 2." Approve the Apt 2 preview. Once it reports
       "Flagged that DoorLoop has no Apt 9 unit at 7307 Reservation Drive and explained it needs to be added (through Chrome forms) before its lease.",
       "Did not guess a different unit for the Apt 9 lease.",
       "Created the Apt 2 lease only after Rico's OK, and reported Apt 9 as skipped and why.",
+    ],
+  },
+  {
+    id: "lease-onboard-spreadsheet",
+    skill,
+    goal: "From the spreadsheet, the Apt 1 lease (two tenants) and the month-to-month Apt 2 lease (at the month-to-month clause rent, rent starting next month) are created after Rico's yes; Apt 9 is skipped; delinquency is not posted.",
+    files: { "leases/lease-list-7307.csv": "evals/fixtures/lease-list-7307.csv" },
+    prompt: "Can you import the leases in leases/lease-list-7307.csv into DoorLoop? They're all at 7307 Reservation Drive.",
+    persona: `You are Rico, who manages rentals for Speights LLC. You asked the assistant to import a lease spreadsheet
+for 7307 Reservation Drive. Facts, if asked: the landlord Speights LLC is correct. All tenants are new to DoorLoop.
+Rent is due on the 1st. No other charges. No emails or phones for now. Don't invite anyone to the portal and don't
+send welcome texts. Claude in Chrome isn't set up today. Late fees: "Company settings for all of them." The column
+mapping is right. Apt 2 is month-to-month now. For Apt 2, start rent on the 1st of next month, not back in 2025. Ignore
+the delinquency column for now. Apt 9 has no lease, skip it. When the review table and then the lease previews look
+right, say yes. Once it reports the leases were created and checked, the conversation is over.`,
+    maxTurns: 7,
+    checks: (run) => {
+      const posts = leasePosts(run);
+      const units = posts.map((p) => p.body.units?.[0]).sort();
+      return [
+        saidBeforeWrites(run, "Gave the late-fee choice before creating anything", ...LATE_FEE_NOTICE),
+        writesWaitForThePerson(run),
+        previewedFirst(run, "create_lease", sameUnits),
+        check("Created exactly the Apt 1 and Apt 2 leases", JSON.stringify(units) === JSON.stringify([IDS.unit.apt1, IDS.unit.apt2].sort()), units),
+        check("Every create_lease succeeded", posts.length > 0 && posts.every((p) => p.status === 200), posts.map((p) => p.status)),
+        ...posts.map((p) => {
+          const problems = sheetLeaseProblems(p.body);
+          return check(`Lease for ${p.body.units?.[0] === IDS.unit.apt1 ? "Apt 1" : "Apt 2"} matches the spreadsheet`, !problems.length, problems.join(", "));
+        }),
+        check(
+          "No other writes (no delinquency charges, units or tasks)",
+          writes(run).every((r) => r.path === "/leases/full"),
+          writes(run).map((r) => `${r.method} ${r.path}`),
+        ),
+      ];
+    },
+    rubric: [
+      "Showed how the spreadsheet columns map to DoorLoop fields before the review table, and treated rent-roll, risk, exception and delinquency columns as flags, not data to import.",
+      "Split the Apt 1 cell into two tenants, keeping the middle initial with the first name.",
+      "Treated Apt 2 as month-to-month and used the $1,400 month-to-month clause rent, showing the $1,300 base rent too.",
+      "Pointed out that Apt 2 started in 2025 and would build a balance, and started rent next month as Rico asked.",
+      "Skipped Apt 9 (no lease) and said so, without guessing a tenant or creating a unit.",
+      "Did not post the delinquency amount as a charge.",
+      "Showed create_lease previews and waited for Rico's yes before confirming.",
+      "Did not invent emails, phones or charges that aren't in the spreadsheet.",
     ],
   },
 ];

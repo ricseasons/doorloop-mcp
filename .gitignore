@@ -5,3 +5,6 @@ dist/
 .env.*
 skill-zips/
 evals/results/
+
+# Real tenant data kept next to the checkout (never commit)
+tempData/
