@@ -27,7 +27,9 @@ Each case ([`cases/`](cases)) gives Claude an opening request and input files (e
 3. **Hard checks** (pass/fail, no AI): what the fake DoorLoop received and which tools were called. For example:
    - lease onboarding: the late-fee notice came before any write, every `create_lease` was previewed in an earlier
      turn than its confirm, the `/leases/full` body matches the PDF (dates, rent, deposit, tenant, late fees on, no
-     portal invite, no pet rent), and a lease for a unit that isn't in DoorLoop is never sent;
+     portal invite, no pet rent), a lease for a unit that isn't in DoorLoop is never sent, and from a spreadsheet
+     (`fixtures/lease-list-7307.csv`, made-up rows) two tenants in one cell are split, a month-to-month row gets its
+     month-to-month rent, a row with no lease is skipped and the delinquency column is never posted;
    - past-due messages: nothing written to DoorLoop, the drafts file exists with each tenant's exact amount, no
      draft for excluded or former tenants, no late-fee amount quoted, no eviction or legal threats;
    - task control: never `create_work_order` or `create_task`, one `PUT` to the right task with the vendor's login,

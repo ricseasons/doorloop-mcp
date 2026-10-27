@@ -108,8 +108,8 @@ Setting up Claude in Chrome (Mac and Windows) is covered step by step in
 
 ## Skills
 
-- [`doorloop-lease-onboarding`](skills/doorloop-lease-onboarding/SKILL.md): folder of lease documents in,
-  review table, then units through Chrome and leases with tenants and rent through `create_lease`.
+- [`doorloop-lease-onboarding`](skills/doorloop-lease-onboarding/SKILL.md): a lease spreadsheet (xlsx or csv)
+  or a folder of lease documents in, review table, then units through Chrome and leases with tenants and rent through `create_lease`.
   Conditional fees (cleaning, returned check, pet rent once approved) aren't set up as recurring
   charges; they're posted when they apply with `create_lease_charge`.
 

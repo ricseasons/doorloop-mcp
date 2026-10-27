@@ -1,0 +1,4 @@
+Unit,Tenant(s),Lease Base Rent,Security Deposit,Lease Start,Lease End,Lease Status,M2M Clause Rent,5/31 Rent Roll Status,5/31 Rent Roll Rent,9/9 Delinquency,Risk,Exception / Required Cure,Lease Source File
+Apt 1,"Casey Q. Testman, Robin Testman",1200,1000,2026-11-01,2027-10-31,Fixed,,Vacant-Unrented,,0,GREEN,,casey-testman_Unit_Apt1.pdf
+Apt 2,Jamie Sample,1300,1300,2025-08-01,2026-07-31,M2M,1400,Current,1300,612.50,RED,Lease expired 2026-07-31; M2M clause +$100/mo,M2M_jamie-sample_Unit_Apt2.pdf
+Apt 9,,,,,,No lease file,,Vacant-Unrented,,0,RED,No executed lease file supplied,
