@@ -118,7 +118,9 @@ you run `npm run web-login` again.
 
 An earlier attempt (`npm run login`, branch `web-login`) captured only the `Authorization` header from an
 automated Chrome and DoorLoop answered 401; the script now reports whether that header alone is enough.
-These endpoints are undocumented, so they may change. Without a saved web login, the
+Tested 2026-11-23: `create_unit` added "Web Login Test" to 7307 Reservation Drive with a saved web login
+(`6b03bce2cf083d2a6200d9a1`); DoorLoop gave that login about 30 days. `create_property_with_units` hasn't been
+run against the real account yet. These endpoints are undocumented, so they may change. Without a saved web login, the
 [`doorloop-web-forms` skill](skills/doorloop-web-forms/SKILL.md) falls back to the web app's forms with
 Claude in Chrome. DoorLoop has no self-serve unit import.
 

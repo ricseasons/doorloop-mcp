@@ -21,6 +21,7 @@ Delete the charges first, then the lease, then the tenant (if DoorLoop doesn't r
 | What | Id | Where | Notes |
 | --- | --- | --- | --- |
 | Unit "API Test Unit" | `6adaef1812eb6d62b9152a71` | 7307 Reservation Drive | Added through Claude in Chrome 2026-10-23 |
+| Unit "Web Login Test" | `6b03bce2cf083d2a6200d9a1` | 7307 Reservation Drive | Added with `create_unit` and the saved web login 2026-11-23 |
 | Subtask | `6adadedc7eb2a1d131e9521b` | 7307 task "Pest Control" `6ad9736b315f38741ee8102f` | Task-control skill test |
 | Work order | `6adadede89ebd97822a3f534` | 7307 task "Pest Control" `6ad9736b315f38741ee8102f` | Task-control skill test |
 | Subtask | `6ad99fdfa862267e62cdefa4` | 444 North Central Avenue #108, OKC | **Under a real tenant request** "Pest Control Needed" `6ad976e8cb42e65f873e5fa1`. Delete only the subtask, not the request |
