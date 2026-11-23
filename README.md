@@ -82,6 +82,9 @@ reliable. Set `DOORLOOP_VENDOR_USERS` to use a file elsewhere.
 | `list_accounts` | Chart of accounts, e.g. to pick the account for a parking or pet charge. Search by `name` (loose) and `class`; returns short rows (id, name, class, active) across every page |
 | `create_lease` | Creates a lease with new or existing tenants, rent, security deposit and recurring charges in one transaction (official `POST /leases/full`). Rent and deposit use DoorLoop's default accounts unless given. Portal invite, welcome SMS and late fees are off unless asked. Returns a preview unless `confirm` is true. |
 | `create_lease_charge` | Posts a one-time charge on a lease, e.g. a returned-check or cleaning fee (official `POST /lease-charges`). Accounts by id or name; names match loosely (case, plurals, partial words), and when several accounts match it lists them so Claude asks which one. Returns a preview with account names and the total unless `confirm` is true. |
+| `web_login_status` | Whether a web login is saved (see below), for which company address and until when. Never returns the login itself. |
+| `create_unit`, `create_property_with_units` | Adds a unit to a property, or a new property with its units, through the saved web login. Returns a preview unless `confirm` is true. |
+| `upload_lease_file` | Attaches a PDF, Word, JPG or PNG file from this computer to a lease's Files, the way the lease's "Add file" dialog does. Works with the API key. Returns a preview unless `confirm` is true. |
 | `doorloop_get` | Any GET path, for exploring endpoints we haven't wrapped yet |
 
 Requests are throttled to stay under DoorLoop's ~50 requests/minute limit, and 429s are retried.
@@ -93,15 +96,40 @@ the web app's forms, to the official `POST /api/tasks/` endpoint:
 
 - `create_task`: `POST /api/tasks/` with `type: INTERNAL_TASK` (new task / subtask form)
 - `create_work_order`: `POST /api/tasks/` with `type: WORK_ORDER` (a task's New work order form)
+- `upload_lease_file`: `POST /api/files/` as `multipart/form-data` with `file`, `name`, `createdByName`,
+  `linkedResource[resourceId]` (the lease id), `linkedResource[resourceType]=LEASE` and `rank=1`, captured from
+  the lease's Files tab on 2026-11-23. DoorLoop fills in the file's property and unit from the lease. It works with
+  the API key (tested 2026-11-23 on the 7307 test lease), unlike units and properties.
 
 Both were tested with an API key on 2026-10-22 and work. The extra fields aren't documented, so they may
 change.
 
 **Units can't be created with an API key.** The web app's `POST /api/units/` and
-`POST /api/properties/create-property-wizard/` return `405 Access Denied` for API keys. The
-[`doorloop-web-forms` skill](skills/doorloop-web-forms/SKILL.md) adds units and new properties through
-the web app's forms with Claude in Chrome. DoorLoop has no self-serve unit import; for a large batch,
-ask DoorLoop support to import a spreadsheet.
+`POST /api/properties/create-property-wizard/` return `405 Access Denied` for API keys. They do work with
+the web app's own login, so `create_unit` and `create_property_with_units` send them with a web login you
+save once:
+
+```sh
+npm run web-login              # copy one DoorLoop request from Chrome DevTools, then press Enter
+npm run web-login -- --check   # "works", or "rejected" when it's time to run it again
+npm run web-login -- --delete  # removes the saved web login
+```
+
+You stay signed in to DoorLoop in your own Chrome as usual. In DevTools' Network tab you right-click one of
+DoorLoop's `api` requests and choose **Copy as cURL**; the script reads it from the clipboard, clears the
+clipboard, and replays it (a read-only GET) with fewer and fewer headers to find the ones DoorLoop actually
+needs. It prints which headers and cookies those are (names only) and when the login expires if DoorLoop
+says, then saves only those to the Mac Keychain, Windows Credential Manager or Linux Secret Service. Nothing
+is printed, pasted into chat or written to a file. When DoorLoop stops accepting it, the tools say so and
+you run `npm run web-login` again.
+
+An earlier attempt (`npm run login`, branch `web-login`) captured only the `Authorization` header from an
+automated Chrome and DoorLoop answered 401; the script now reports whether that header alone is enough.
+Tested 2026-11-23: `create_unit` added "Web Login Test" to 7307 Reservation Drive with a saved web login
+(`6b03bce2cf083d2a6200d9a1`); DoorLoop gave that login about 30 days. `create_property_with_units` hasn't been
+run against the real account yet. These endpoints are undocumented, so they may change. Without a saved web login, the
+[`doorloop-web-forms` skill](skills/doorloop-web-forms/SKILL.md) falls back to the web app's forms with
+Claude in Chrome. DoorLoop has no self-serve unit import.
 
 Setting up Claude in Chrome (Mac and Windows) is covered step by step in
 [skills/doorloop-web-forms/SETUP.md](skills/doorloop-web-forms/SETUP.md).
@@ -109,7 +137,7 @@ Setting up Claude in Chrome (Mac and Windows) is covered step by step in
 ## Skills
 
 - [`doorloop-lease-onboarding`](skills/doorloop-lease-onboarding/SKILL.md): a lease spreadsheet (xlsx or csv)
-  or a folder of lease documents in, review table, then units through Chrome and leases with tenants and rent through `create_lease`.
+  or a folder of lease documents in, review table, then missing units (web login, or Chrome) and leases with tenants and rent through `create_lease`.
   Conditional fees (cleaning, returned check, pet rent once approved) aren't set up as recurring
   charges; they're posted when they apply with `create_lease_charge`.
 
@@ -118,8 +146,8 @@ In the review table you choose, for each lease, DoorLoop's company late-fee sche
 defaults > Fees > Late fees) or the amounts written in the lease. The API can't set per-lease amounts, so
 custom ones are set afterwards through Chrome in DoorLoop's Late fees > Customize > Leases drawer, after a
 separate yes.
-- [`doorloop-web-forms`](skills/doorloop-web-forms/SKILL.md): add units or a new property, or set one
-  lease's own late fees, with Claude in Chrome.
+- [`doorloop-web-forms`](skills/doorloop-web-forms/SKILL.md): add units or a new property (with the saved
+  web login, or Claude in Chrome), or set one lease's own late fees with Claude in Chrome.
 - [`doorloop-past-due-messages`](skills/doorloop-past-due-messages/SKILL.md): finds tenants with an overdue
   balance and drafts a message to each for review. It only drafts; nothing is sent to tenants.
 

@@ -1,6 +1,6 @@
 ---
 name: doorloop-lease-onboarding
-description: Onboard existing leases into DoorLoop from a spreadsheet (xlsx or csv rent roll or lease list) or a folder of lease documents (PDF, Word or scans). Reads each lease or row, builds one review table of units, tenants, dates, rent and deposits, flags gaps, then creates missing units (through Chrome), the leases with their tenants and rent (through the DoorLoop API), and any per-lease late fees (through Chrome) after the person's OK. Use when someone wants to load, import, onboard or set up leases, tenants or a rent roll in DoorLoop from a spreadsheet or documents.
+description: Onboard existing leases into DoorLoop from a spreadsheet (xlsx or csv rent roll or lease list) or a folder of lease documents (PDF, Word or scans). Reads each lease or row, builds one review table of units, tenants, dates, rent and deposits, flags gaps, then creates missing units (through the saved web login, or Chrome), the leases with their tenants and rent (through the DoorLoop API), and any per-lease late fees (through Chrome) after the person's OK. Use when someone wants to load, import, onboard or set up leases, tenants or a rent roll in DoorLoop from a spreadsheet or documents.
 ---
 
 # DoorLoop lease onboarding
@@ -158,8 +158,9 @@ Ask the person to fix or confirm the flagged rows. Leases they don't confirm are
 
 ## 4. Create missing units first
 
-For units that don't exist, use doorloop-web-forms: the Add unit form for a few, or the New property
-wizard if the property is new. List what you'll add and get an OK first. Re-run `list_units` afterwards
+For units that don't exist, use doorloop-web-forms: `create_unit` (or `create_property_with_units` if the
+property is new) when `web_login_status` shows a saved web login, otherwise the Add unit form or the New
+property wizard in Chrome. List what you'll add and get an OK first. Re-run `list_units` afterwards
 to get the new unit ids.
 
 ## 5. Create the leases
@@ -187,6 +188,13 @@ Dates in the past: DoorLoop will post rent charges from the start date, so an ol
 balance for every month since it started. Point this out before confirming a lease that started more
 than a month ago, and ask whether to start rent from the current month instead (`rent.start`).
 
+## 5a. Attach the lease documents
+
+When the leases came from documents (not a spreadsheet), offer to attach each source file to its new lease
+with `upload_lease_file` (`lease` = the new lease id, `file_path` = the document's full path). Preview them
+all first and show one list (lease, file name, size), then wait for a yes; a yes on the leases is not a yes
+on the uploads. Upload each once; if one fails, report it and carry on with the rest only if the person agrees.
+
 ## 5b. Set per-lease late fees
 
 For each created lease where the person chose **Lease terms**, use doorloop-web-forms, **Set a lease's
@@ -200,7 +208,8 @@ Run `get_rent_roll` with `filter_property` and compare it with the table: each u
 deposit. Then report:
 
 - leases created (lease id, unit, tenants) and tenants created;
-- units added through Chrome;
+- units added (and whether through the web login or Chrome);
+- lease documents attached (file ids);
 - late fees per lease: company settings, or the custom amounts set (and any still to set by hand);
 - rows skipped and why;
 - anything that doesn't match the documents or spreadsheet.

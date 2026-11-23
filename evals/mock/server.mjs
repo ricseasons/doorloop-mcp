@@ -21,19 +21,28 @@ export async function startMock({ world = buildWorld(), port = 0 } = {}) {
     const path = url.pathname.replace(/^\/api/, "").replace(/\/+$/, "") || "/";
     const query = Object.fromEntries(url.searchParams);
     let body;
-    let raw = "";
-    for await (const chunk of req) raw += chunk;
-    try {
-      body = raw ? JSON.parse(raw) : undefined;
-    } catch {
-      body = raw;
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const raw = Buffer.concat(chunks);
+    if (/^multipart\/form-data/.test(req.headers["content-type"] ?? "")) {
+      // Uploads: keep the form fields, and the file's name, type and size instead of its bytes.
+      const form = await new Response(raw, { headers: { "content-type": req.headers["content-type"] } }).formData();
+      body = {};
+      for (const [k, v] of form) body[k] = typeof v === "string" ? v : { name: v.name, type: v.type, size: v.size };
+    } else {
+      try {
+        body = raw.length ? JSON.parse(raw.toString("utf8")) : undefined;
+      } catch {
+        body = raw.toString("utf8");
+      }
     }
 
-    const entry = { turn, method: req.method, path, query, body, authorized: /^bearer \S+/i.test(req.headers.authorization ?? "") };
+    const web = webLogin(req.headers.cookie);
+    const entry = { turn, method: req.method, path, query, body, authorized: /^bearer \S+/i.test(req.headers.authorization ?? ""), web };
     let status = 200;
     let out;
     try {
-      [status, out] = route(world, req.method, path, query, body);
+      [status, out] = web === "expired" ? [401, { message: "Session expired" }] : route(world, req.method, path, query, body, web === "ok");
     } catch (e) {
       [status, out] = [500, { message: String(e) }];
     }
@@ -70,7 +79,13 @@ function page(items, query) {
 const notFound = [404, { message: "Not found" }];
 const byId = (items, id) => (items.find((x) => x.id === id) ? [200, items.find((x) => x.id === id)] : notFound);
 
-function route(w, method, path, q, body) {
+// The fake web login the evals save (see WEB_LOGIN in lib/server-env.mjs): a `dl_web` cookie, "expired" for 401.
+function webLogin(cookie = "") {
+  const value = /(?:^|;\s*)dl_web=([^;]*)/.exec(cookie)?.[1];
+  return value === undefined ? undefined : value === "expired" ? "expired" : "ok";
+}
+
+function route(w, method, path, q, body, web = false) {
   const [, collection, id, sub] = path.split("/");
 
   if (method === "GET") {
@@ -148,9 +163,39 @@ function route(w, method, path, q, body) {
     w.tasks[i] = { ...body, id };
     return [200, w.tasks[i]];
   }
-  // What the real API says to an API key for these (see README).
-  if (method === "POST" && (collection === "units" || (collection === "properties" && id === "create-property-wizard"))) {
-    return [405, { message: "Access Denied" }];
+  // What the real API says to an API key for these (see README); the web login may create them.
+  if (method === "POST" && collection === "units" && !id) {
+    if (!web) return [405, { message: "Access Denied" }];
+    if (!w.properties.some((p) => p.id === body?.property)) return [400, { message: "Unknown property" }];
+    const unit = { id: newId(), ...body };
+    w.units.push(unit);
+    return [200, unit];
+  }
+  // The web app's file upload (multipart); the API key may send it too.
+  if (method === "POST" && collection === "files" && !id) {
+    const target = body?.["linkedResource[resourceType]"] === "LEASE" && w.leases.find((l) => l.id === body["linkedResource[resourceId]"]);
+    if (!target || !body.file?.size) return [400, { message: "Bad upload" }];
+    const file = {
+      id: newId(),
+      name: body.name,
+      size: body.file.size,
+      mimeType: body.file.type,
+      rank: Number(body.rank),
+      purpose: "file",
+      linkedResource: { resourceId: target.id, resourceType: "LEASE" },
+      property: target.property,
+      unit: target.units[0],
+    };
+    w.files.push(file);
+    return [200, { ...file, downloadUrl: `/files/${file.id}/download` }];
+  }
+  if (method === "POST" && collection === "properties" && id === "create-property-wizard") {
+    if (!web) return [405, { message: "Access Denied" }];
+    const property = { id: newId(), ...body.property, numActiveUnits: body.units.length };
+    w.properties.push(property);
+    const units = body.units.map(({ id: _draft, ...u }) => ({ ...u, id: newId(), property: property.id }));
+    w.units.push(...units);
+    return [200, { ...property, units }];
   }
   return [405, { message: `${method} ${path} is not supported by the fake DoorLoop` }];
 }

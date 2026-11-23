@@ -119,6 +119,22 @@
       "description": "Create a vendor work order under a task (previews first)"
     },
     {
+      "name": "web_login_status",
+      "description": "Whether a DoorLoop web login is saved for units and properties"
+    },
+    {
+      "name": "create_unit",
+      "description": "Add a unit to a property with the saved web login (previews first)"
+    },
+    {
+      "name": "create_property_with_units",
+      "description": "Create a property and its units with the saved web login (previews first)"
+    },
+    {
+      "name": "upload_lease_file",
+      "description": "Attach a document from this computer to a lease's Files (previews first)"
+    },
+    {
       "name": "list_accounts",
       "description": "List chart-of-accounts entries"
     },

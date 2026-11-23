@@ -1,14 +1,32 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { randomBytes, randomUUID } from "node:crypto";
+import { readFileSync, statSync } from "node:fs";
+import { basename, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
-import { loadApiKey } from "./auth.js";
-import { DoorLoopClient, type Query } from "./client.js";
+import { loadApiKey, loadWebLogin } from "./auth.js";
+import { DoorLoopClient, DoorLoopError, type Query } from "./client.js";
 
 const client = new DoorLoopClient(loadApiKey());
+
+// Creating units and properties is refused for API keys (405), so those calls use the web app's own login,
+// saved in the keychain by `npm run web-login`. It's read on each call so a fresh login is picked up.
+async function asWebUser<T>(call: (web: DoorLoopClient) => Promise<T>): Promise<T> {
+  const login = loadWebLogin();
+  try {
+    return await call(new DoorLoopClient(login.headers, login.baseUrl));
+  } catch (err) {
+    if (err instanceof DoorLoopError && (err.status === 401 || err.status === 403)) {
+      throw new Error(
+        `DoorLoop refused the saved web login (HTTP ${err.status}); it has probably expired. Ask the person to run ` +
+          "`npm run web-login` in the doorloop-mcp folder, then try again. Nothing was created.",
+      );
+    }
+    throw err;
+  }
+}
 
 const server = new McpServer({ name: "doorloop", version: "0.1.0" });
 
@@ -653,6 +671,200 @@ server.registerTool(
       });
     }
     return json(await client.post("/lease-charges", body));
+  },
+);
+
+server.registerTool(
+  "web_login_status",
+  {
+    description:
+      "Whether a DoorLoop web login is saved (needed for create_unit and create_property_with_units), for which " +
+      "company address, and when it expires if DoorLoop said. Never returns the login itself.",
+    inputSchema: {},
+    annotations: { readOnlyHint: true },
+  },
+  async () => {
+    try {
+      const { baseUrl, savedAt, expiresAt } = loadWebLogin();
+      const expired = expiresAt ? new Date(expiresAt).getTime() < Date.now() : undefined;
+      return json({ saved: true, host: new URL(baseUrl).host, savedAt, expiresAt: expiresAt ?? "unknown", expired });
+    } catch {
+      return json({ saved: false, fix: "Ask the person to run `npm run web-login` in the doorloop-mcp folder." });
+    }
+  },
+);
+
+// Placeholder property id the web app sends before the property exists.
+const NEW_PROPERTY_PLACEHOLDER = "507f1f77bcf86cd799439011";
+
+const unitDetails = {
+  name: z.string().describe('Unit name, e.g. "Apt 1"'),
+  beds: z.number().optional(),
+  baths: z.number().optional(),
+  size: z.number().optional().describe("Square feet"),
+  marketRent: z.number().optional().describe("Listing / market rent per month"),
+};
+
+// Mirrors the web app's "Add new unit" form (captured 2026-10-22). Undocumented; uses the web login.
+server.registerTool(
+  "create_unit",
+  {
+    description:
+      "Add a unit to an existing property. Uses the DoorLoop web login saved by `npm run web-login`. Without " +
+      "confirm=true this only returns the request it would send, so show that to the user and get their OK first.",
+    inputSchema: {
+      property: z.string().describe("Property id"),
+      ...unitDetails,
+      description: z.string().max(1000).optional(),
+      address: z
+        .object({
+          street1: z.string(),
+          street2: z.string().optional(),
+          city: z.string(),
+          state: z.string().describe("Two-letter state code"),
+          zip: z.string(),
+          country: z.string().default("United States"),
+        })
+        .optional()
+        .describe("Only when the unit's address differs from the property's"),
+      confirm: z.boolean().default(false).describe("Actually create it. Leave false to preview."),
+    },
+    annotations: { destructiveHint: false, idempotentHint: false },
+  },
+  async ({ confirm, address, ...unit }) => {
+    const body = {
+      active: true,
+      addressSameAsProperty: !address,
+      rentalApplicationListing: { activeListing: true },
+      pictures: [],
+      listing: { leaseTermsActive: false },
+      amenities: [],
+      disablePersonDetailsValidation: false,
+      ...unit,
+      ...(address && { address: { shouldValidateStateAndCountry: true, ...address } }),
+    };
+
+    if (!confirm) return json({ preview: true, request: body });
+    return json(await asWebUser((web) => web.post("/units/", body)));
+  },
+);
+
+// Mirrors the request the web app's "New property" wizard sends (captured 2026-10-22). Undocumented; uses
+// the web login.
+server.registerTool(
+  "create_property_with_units",
+  {
+    description:
+      "Create a property and its units in one step. Uses the DoorLoop web login saved by `npm run web-login`. " +
+      "Without confirm=true this only returns the request it would send, so show that to the user and get " +
+      "their OK before confirming.",
+    inputSchema: {
+      street1: z.string(),
+      street2: z.string().optional(),
+      city: z.string(),
+      state: z.string().describe("Two-letter state code"),
+      zip: z.string(),
+      country: z.string().default("United States"),
+      type: z
+        .string()
+        .default("RESIDENTIAL_MULTI_FAMILY")
+        .describe("DoorLoop property type; RESIDENTIAL_MULTI_FAMILY is the only value confirmed so far"),
+      units: z.array(z.object(unitDetails)).min(1),
+      confirm: z.boolean().default(false).describe("Actually create it. Leave false to preview."),
+    },
+    annotations: { destructiveHint: false, idempotentHint: false },
+  },
+  async ({ street1, street2, city, state, zip, country, type, units, confirm }) => {
+    const body = {
+      property: {
+        active: true,
+        address: {
+          street1,
+          ...(street2 && { street2 }),
+          city,
+          state,
+          zip,
+          country,
+          shouldValidateStateAndCountry: true,
+          acceptInvalidAddress: true,
+        },
+        numActiveUnits: 0,
+        type,
+        owners: [],
+      },
+      units: units.map((u) => ({
+        active: true,
+        addressSameAsProperty: true,
+        rentalApplicationListing: { activeListing: true },
+        id: randomUUID(),
+        property: NEW_PROPERTY_PLACEHOLDER,
+        ...u,
+      })),
+      specifyAccounts: "default",
+      specifySecurityDeposit: "",
+      reserveFundsEnabled: "DISABLED",
+      invalidUnitsName: false,
+      propertyOwnershipEnabled: "DISABLED",
+    };
+
+    if (!confirm) return json({ preview: true, request: body });
+    return json(await asWebUser((web) => web.post("/properties/create-property-wizard/", body)));
+  },
+);
+
+const LEASE_FILE_TYPES: Record<string, string> = {
+  ".pdf": "application/pdf",
+  ".doc": "application/msword",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+};
+// DoorLoop doesn't document a limit; keep uploads to a size a lease document plausibly has.
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
+// Mirrors the web app's "Add file" dialog on a lease's Files tab (captured 2026-11-23): one multipart
+// POST /api/files/ linked to the lease. The API key may send it (tested 2026-11-23).
+server.registerTool(
+  "upload_lease_file",
+  {
+    description:
+      "Attach a document (e.g. the signed lease PDF) from this computer to a DoorLoop lease's Files. Without " +
+      "confirm=true this only checks the file and the lease and returns what it would upload, so show that to the " +
+      "user and get their OK first.",
+    inputSchema: {
+      lease: z.string().describe("Lease id"),
+      file_path: z.string().describe("Absolute path of the file on this computer (PDF, Word, JPG or PNG)"),
+      name: z.string().max(200).optional().describe("File name shown in DoorLoop; defaults to the file's own name"),
+      confirm: z.boolean().default(false).describe("Actually upload it. Leave false to preview."),
+    },
+    annotations: { destructiveHint: false, idempotentHint: false },
+  },
+  async ({ lease, file_path, name, confirm }) => {
+    const mimeType = LEASE_FILE_TYPES[extname(file_path).toLowerCase()];
+    if (!mimeType) throw new Error(`Only ${Object.keys(LEASE_FILE_TYPES).join(", ")} files can be attached.`);
+    let size: number;
+    try {
+      size = statSync(file_path).size;
+    } catch {
+      throw new Error(`Can't read ${file_path}. Give the full path of a file on this computer.`);
+    }
+    if (size === 0 || size > MAX_UPLOAD_BYTES) throw new Error(`${file_path} is ${size} bytes; expected 1 byte to 25 MB.`);
+    const fileName = name ?? basename(file_path);
+    const target = await client.get<{ id: string; name?: string; property?: string; units?: string[] }>(
+      `/leases/${encodeURIComponent(lease)}`,
+    );
+    const upload = { lease: { id: target.id, name: target.name, property: target.property, units: target.units }, fileName, mimeType, size };
+    if (!confirm) return json({ preview: true, upload });
+
+    const form = new FormData();
+    form.append("file", new Blob([readFileSync(file_path)], { type: mimeType }), fileName);
+    form.append("name", fileName);
+    form.append("createdByName", "");
+    form.append("linkedResource[resourceId]", target.id);
+    form.append("linkedResource[resourceType]", "LEASE");
+    form.append("rank", "1");
+    return json(await client.postForm("/files/", form));
   },
 );
 

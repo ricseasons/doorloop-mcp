@@ -91,7 +91,7 @@ async function runCase(c, out) {
     const mcpConfig = join(work, "mcp.json");
     writeFileSync(
       mcpConfig,
-      JSON.stringify({ mcpServers: { doorloop: { command: process.execPath, args: [SERVER], env: serverEnv(mock.url, work) } } }),
+      JSON.stringify({ mcpServers: { doorloop: { command: process.execPath, args: [SERVER], env: serverEnv(mock.url, work, c.webLogin) } } }),
     );
     const before = new Set(listFiles(ws));
 
