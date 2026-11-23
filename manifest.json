@@ -131,6 +131,10 @@
       "description": "Create a property and its units with the saved web login (previews first)"
     },
     {
+      "name": "upload_lease_file",
+      "description": "Attach a document from this computer to a lease's Files (previews first)"
+    },
+    {
       "name": "list_accounts",
       "description": "List chart-of-accounts entries"
     },

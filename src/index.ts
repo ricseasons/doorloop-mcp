@@ -2,7 +2,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { randomBytes, randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
+import { basename, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { loadApiKey, loadWebLogin } from "./auth.js";
@@ -808,6 +809,69 @@ server.registerTool(
 
     if (!confirm) return json({ preview: true, request: body });
     return json(await asWebUser((web) => web.post("/properties/create-property-wizard/", body)));
+  },
+);
+
+const LEASE_FILE_TYPES: Record<string, string> = {
+  ".pdf": "application/pdf",
+  ".doc": "application/msword",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+};
+// DoorLoop doesn't document a limit; keep uploads to a size a lease document plausibly has.
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
+// Mirrors the web app's "Add file" dialog on a lease's Files tab (captured 2026-11-23): one multipart
+// POST /api/files/ linked to the lease. Tries the API key first and falls back to the web login if
+// DoorLoop refuses the key, and says which one it used.
+server.registerTool(
+  "upload_lease_file",
+  {
+    description:
+      "Attach a document (e.g. the signed lease PDF) from this computer to a DoorLoop lease's Files. Without " +
+      "confirm=true this only checks the file and the lease and returns what it would upload, so show that to the " +
+      "user and get their OK first. Uses the API key, or the web login saved by `npm run web-login` if DoorLoop " +
+      "refuses the key.",
+    inputSchema: {
+      lease: z.string().describe("Lease id"),
+      file_path: z.string().describe("Absolute path of the file on this computer (PDF, Word, JPG or PNG)"),
+      name: z.string().max(200).optional().describe("File name shown in DoorLoop; defaults to the file's own name"),
+      confirm: z.boolean().default(false).describe("Actually upload it. Leave false to preview."),
+    },
+    annotations: { destructiveHint: false, idempotentHint: false },
+  },
+  async ({ lease, file_path, name, confirm }) => {
+    const mimeType = LEASE_FILE_TYPES[extname(file_path).toLowerCase()];
+    if (!mimeType) throw new Error(`Only ${Object.keys(LEASE_FILE_TYPES).join(", ")} files can be attached.`);
+    let size: number;
+    try {
+      size = statSync(file_path).size;
+    } catch {
+      throw new Error(`Can't read ${file_path}. Give the full path of a file on this computer.`);
+    }
+    if (size === 0 || size > MAX_UPLOAD_BYTES) throw new Error(`${file_path} is ${size} bytes; expected 1 byte to 25 MB.`);
+    const fileName = name ?? basename(file_path);
+    const target = await client.get<{ id: string; name?: string; property?: string; units?: string[] }>(
+      `/leases/${encodeURIComponent(lease)}`,
+    );
+    const upload = { lease: { id: target.id, name: target.name, property: target.property, units: target.units }, fileName, mimeType, size };
+    if (!confirm) return json({ preview: true, upload });
+
+    const form = new FormData();
+    form.append("file", new Blob([readFileSync(file_path)], { type: mimeType }), fileName);
+    form.append("name", fileName);
+    form.append("createdByName", "");
+    form.append("linkedResource[resourceId]", target.id);
+    form.append("linkedResource[resourceType]", "LEASE");
+    form.append("rank", "1");
+    try {
+      return json({ via: "api-key", file: await client.postForm("/files/", form) });
+    } catch (err) {
+      if (!(err instanceof DoorLoopError && [401, 403, 405].includes(err.status))) throw err;
+    }
+    return json({ via: "web-login", file: await asWebUser((web) => web.postForm("/files/", form)) });
   },
 );
 

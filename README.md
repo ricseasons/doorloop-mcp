@@ -82,6 +82,9 @@ reliable. Set `DOORLOOP_VENDOR_USERS` to use a file elsewhere.
 | `list_accounts` | Chart of accounts, e.g. to pick the account for a parking or pet charge. Search by `name` (loose) and `class`; returns short rows (id, name, class, active) across every page |
 | `create_lease` | Creates a lease with new or existing tenants, rent, security deposit and recurring charges in one transaction (official `POST /leases/full`). Rent and deposit use DoorLoop's default accounts unless given. Portal invite, welcome SMS and late fees are off unless asked. Returns a preview unless `confirm` is true. |
 | `create_lease_charge` | Posts a one-time charge on a lease, e.g. a returned-check or cleaning fee (official `POST /lease-charges`). Accounts by id or name; names match loosely (case, plurals, partial words), and when several accounts match it lists them so Claude asks which one. Returns a preview with account names and the total unless `confirm` is true. |
+| `web_login_status` | Whether a web login is saved (see below), for which company address and until when. Never returns the login itself. |
+| `create_unit`, `create_property_with_units` | Adds a unit to a property, or a new property with its units, through the saved web login. Returns a preview unless `confirm` is true. |
+| `upload_lease_file` | Attaches a PDF, Word, JPG or PNG file from this computer to a lease's Files, the way the lease's "Add file" dialog does. Tries the API key, then the web login if DoorLoop refuses the key, and says which it used. Returns a preview unless `confirm` is true. |
 | `doorloop_get` | Any GET path, for exploring endpoints we haven't wrapped yet |
 
 Requests are throttled to stay under DoorLoop's ~50 requests/minute limit, and 429s are retried.
@@ -93,6 +96,9 @@ the web app's forms, to the official `POST /api/tasks/` endpoint:
 
 - `create_task`: `POST /api/tasks/` with `type: INTERNAL_TASK` (new task / subtask form)
 - `create_work_order`: `POST /api/tasks/` with `type: WORK_ORDER` (a task's New work order form)
+- `upload_lease_file`: `POST /api/files/` as `multipart/form-data` with `file`, `name`, `createdByName`,
+  `linkedResource[resourceId]` (the lease id), `linkedResource[resourceType]=LEASE` and `rank=1`, captured from
+  the lease's Files tab on 2026-11-23. DoorLoop fills in the file's property and unit from the lease.
 
 Both were tested with an API key on 2026-10-22 and work. The extra fields aren't documented, so they may
 change.

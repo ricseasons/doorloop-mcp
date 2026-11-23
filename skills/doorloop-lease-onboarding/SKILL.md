@@ -188,6 +188,14 @@ Dates in the past: DoorLoop will post rent charges from the start date, so an ol
 balance for every month since it started. Point this out before confirming a lease that started more
 than a month ago, and ask whether to start rent from the current month instead (`rent.start`).
 
+## 5a. Attach the lease documents
+
+When the leases came from documents (not a spreadsheet), offer to attach each source file to its new lease
+with `upload_lease_file` (`lease` = the new lease id, `file_path` = the document's full path). Preview them
+all first and show one list (lease, file name, size), then wait for a yes; a yes on the leases is not a yes
+on the uploads. Upload each once. If one is refused for the web login, ask the person to run
+`npm run web-login` and carry on with the rest afterwards.
+
 ## 5b. Set per-lease late fees
 
 For each created lease where the person chose **Lease terms**, use doorloop-web-forms, **Set a lease's
@@ -202,6 +210,7 @@ deposit. Then report:
 
 - leases created (lease id, unit, tenants) and tenants created;
 - units added (and whether through the web login or Chrome);
+- lease documents attached (file ids);
 - late fees per lease: company settings, or the custom amounts set (and any still to set by hand);
 - rows skipped and why;
 - anything that doesn't match the documents or spreadsheet.

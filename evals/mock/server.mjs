@@ -21,12 +21,20 @@ export async function startMock({ world = buildWorld(), port = 0 } = {}) {
     const path = url.pathname.replace(/^\/api/, "").replace(/\/+$/, "") || "/";
     const query = Object.fromEntries(url.searchParams);
     let body;
-    let raw = "";
-    for await (const chunk of req) raw += chunk;
-    try {
-      body = raw ? JSON.parse(raw) : undefined;
-    } catch {
-      body = raw;
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const raw = Buffer.concat(chunks);
+    if (/^multipart\/form-data/.test(req.headers["content-type"] ?? "")) {
+      // Uploads: keep the form fields, and the file's name, type and size instead of its bytes.
+      const form = await new Response(raw, { headers: { "content-type": req.headers["content-type"] } }).formData();
+      body = {};
+      for (const [k, v] of form) body[k] = typeof v === "string" ? v : { name: v.name, type: v.type, size: v.size };
+    } else {
+      try {
+        body = raw.length ? JSON.parse(raw.toString("utf8")) : undefined;
+      } catch {
+        body = raw.toString("utf8");
+      }
     }
 
     const web = webLogin(req.headers.cookie);
@@ -162,6 +170,26 @@ function route(w, method, path, q, body, web = false) {
     const unit = { id: newId(), ...body };
     w.units.push(unit);
     return [200, unit];
+  }
+  // The web app's file upload (multipart). Whether an API key may upload is unknown; the fake refuses it like
+  // units, so the evals cover the fall back to the web login.
+  if (method === "POST" && collection === "files" && !id) {
+    if (!web) return [405, { message: "Access Denied" }];
+    const target = body?.["linkedResource[resourceType]"] === "LEASE" && w.leases.find((l) => l.id === body["linkedResource[resourceId]"]);
+    if (!target || !body.file?.size) return [400, { message: "Bad upload" }];
+    const file = {
+      id: newId(),
+      name: body.name,
+      size: body.file.size,
+      mimeType: body.file.type,
+      rank: Number(body.rank),
+      purpose: "file",
+      linkedResource: { resourceId: target.id, resourceType: "LEASE" },
+      property: target.property,
+      unit: target.units[0],
+    };
+    w.files.push(file);
+    return [200, { ...file, downloadUrl: `/files/${file.id}/download` }];
   }
   if (method === "POST" && collection === "properties" && id === "create-property-wizard") {
     if (!web) return [405, { message: "Access Denied" }];

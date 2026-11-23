@@ -37,6 +37,11 @@ export class DoorLoopClient {
     return this.request<T>("PUT", path, undefined, body);
   }
 
+  // Sends a multipart form (e.g. a file upload); fetch sets the boundary.
+  postForm<T = unknown>(path: string, form: FormData): Promise<T> {
+    return this.request<T>("POST", path, undefined, form);
+  }
+
   // Downloads a file (e.g. /files/<id>/download) as raw bytes.
   async download(path: string): Promise<{ data: Buffer; contentType: string }> {
     const res = await this.send("GET", path, undefined, undefined, "*/*");
@@ -64,11 +69,12 @@ export class DoorLoopClient {
       await this.throttle();
       const headers = new Headers(typeof this.auth === "string" ? { Authorization: `bearer ${this.auth}` } : this.auth);
       headers.set("Accept", accept);
-      if (body !== undefined) headers.set("Content-Type", "application/json");
+      const isForm = body instanceof FormData;
+      if (body !== undefined && !isForm) headers.set("Content-Type", "application/json");
       const res = await fetch(url, {
         method,
         headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
       });
 
       if (res.status === 429 && attempt < MAX_RETRIES) {
