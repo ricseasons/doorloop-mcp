@@ -98,10 +98,29 @@ Both were tested with an API key on 2026-10-22 and work. The extra fields aren't
 change.
 
 **Units can't be created with an API key.** The web app's `POST /api/units/` and
-`POST /api/properties/create-property-wizard/` return `405 Access Denied` for API keys. The
-[`doorloop-web-forms` skill](skills/doorloop-web-forms/SKILL.md) adds units and new properties through
-the web app's forms with Claude in Chrome. DoorLoop has no self-serve unit import; for a large batch,
-ask DoorLoop support to import a spreadsheet.
+`POST /api/properties/create-property-wizard/` return `405 Access Denied` for API keys. They do work with
+the web app's own login, so `create_unit` and `create_property_with_units` send them with a web login you
+save once:
+
+```sh
+npm run web-login              # copy one DoorLoop request from Chrome DevTools, then press Enter
+npm run web-login -- --check   # "works", or "rejected" when it's time to run it again
+npm run web-login -- --delete  # removes the saved web login
+```
+
+You stay signed in to DoorLoop in your own Chrome as usual. In DevTools' Network tab you right-click one of
+DoorLoop's `api` requests and choose **Copy as cURL**; the script reads it from the clipboard, clears the
+clipboard, and replays it (a read-only GET) with fewer and fewer headers to find the ones DoorLoop actually
+needs. It prints which headers and cookies those are (names only) and when the login expires if DoorLoop
+says, then saves only those to the Mac Keychain, Windows Credential Manager or Linux Secret Service. Nothing
+is printed, pasted into chat or written to a file. When DoorLoop stops accepting it, the tools say so and
+you run `npm run web-login` again.
+
+An earlier attempt (`npm run login`, branch `web-login`) captured only the `Authorization` header from an
+automated Chrome and DoorLoop answered 401; the script now reports whether that header alone is enough.
+These endpoints are undocumented, so they may change. Without a saved web login, the
+[`doorloop-web-forms` skill](skills/doorloop-web-forms/SKILL.md) falls back to the web app's forms with
+Claude in Chrome. DoorLoop has no self-serve unit import.
 
 Setting up Claude in Chrome (Mac and Windows) is covered step by step in
 [skills/doorloop-web-forms/SETUP.md](skills/doorloop-web-forms/SETUP.md).
@@ -109,7 +128,7 @@ Setting up Claude in Chrome (Mac and Windows) is covered step by step in
 ## Skills
 
 - [`doorloop-lease-onboarding`](skills/doorloop-lease-onboarding/SKILL.md): a lease spreadsheet (xlsx or csv)
-  or a folder of lease documents in, review table, then units through Chrome and leases with tenants and rent through `create_lease`.
+  or a folder of lease documents in, review table, then missing units (web login, or Chrome) and leases with tenants and rent through `create_lease`.
   Conditional fees (cleaning, returned check, pet rent once approved) aren't set up as recurring
   charges; they're posted when they apply with `create_lease_charge`.
 
@@ -118,8 +137,8 @@ In the review table you choose, for each lease, DoorLoop's company late-fee sche
 defaults > Fees > Late fees) or the amounts written in the lease. The API can't set per-lease amounts, so
 custom ones are set afterwards through Chrome in DoorLoop's Late fees > Customize > Leases drawer, after a
 separate yes.
-- [`doorloop-web-forms`](skills/doorloop-web-forms/SKILL.md): add units or a new property, or set one
-  lease's own late fees, with Claude in Chrome.
+- [`doorloop-web-forms`](skills/doorloop-web-forms/SKILL.md): add units or a new property (with the saved
+  web login, or Claude in Chrome), or set one lease's own late fees with Claude in Chrome.
 - [`doorloop-past-due-messages`](skills/doorloop-past-due-messages/SKILL.md): finds tenants with an overdue
   balance and drafts a message to each for review. It only drafts; nothing is sent to tenants.
 

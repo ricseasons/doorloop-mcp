@@ -1,6 +1,6 @@
 ---
 name: doorloop-web-forms
-description: Add units to a DoorLoop property, create a new property with its units, or give one lease its own late fees, by filling in the DoorLoop web app's forms with Claude in Chrome. Use when someone asks to add, create or set up units or a new property in DoorLoop, or to change, customize or read a lease's late fees. The DoorLoop API can't do these with an API key, so they go through the browser.
+description: Add units to a DoorLoop property, create a new property with its units, or give one lease its own late fees. Units and properties go through the saved DoorLoop web login (create_unit, create_property_with_units) when there is one, otherwise through the web app's forms with Claude in Chrome; late fees always use Chrome. Use when someone asks to add, create or set up units or a new property in DoorLoop, or to change, customize or read a lease's late fees. The DoorLoop API can't do these with an API key.
 ---
 
 # DoorLoop web forms (Claude in Chrome)
@@ -9,7 +9,29 @@ DoorLoop's API can't create units or properties with an API key, and can only sw
 automatic late fees on or off (not set amounts), so this skill fills in the web app's own forms in the person's Chrome, using their existing DoorLoop login. Use the `doorloop` MCP tools for
 everything else (looking up ids, checking results).
 
-## Before you start
+## Units and properties with the web login (try this first)
+
+Call `web_login_status`. If `saved` is true and `expired` isn't true, skip Chrome for units and properties:
+
+1. Find the property with `list_properties` and its existing units with `list_units` (`filter_property`), so
+   you don't create a duplicate. Match names loosely ("Apt 5" and "Apartment 5" are the same unit).
+2. Collect the details: unit name (required), beds, baths, size (sq. ft.), listing price; a unit address only
+   if it differs from the property's. For a new property: street, city, two-letter state, zip, and every unit.
+3. Call `create_unit` (or `create_property_with_units`) **without** `confirm`. Show the person a short table of
+   what it will create and get their OK. Only then call it again with the same details and `confirm: true`.
+   Call it once per unit; never retry a confirmed call without checking `list_units` first.
+4. Confirm with `list_units` (`filter_property`) and report the new ids.
+
+`create_property_with_units` makes a self-owned property with DoorLoop's default bank account. If the person
+wants owners assigned or another bank account, or a property type other than residential multi-family, use
+the **New property with units** form below instead.
+
+If a call says the web login expired or none is saved, ask the person to run `npm run web-login` in the
+doorloop-mcp folder (it walks them through copying one request from Chrome's DevTools; they never paste the
+login to you). Then try again, or use Chrome below if they'd rather not. Never ask for a token, cookie or
+header value, and never accept one pasted into chat: tell them to run `npm run web-login` instead.
+
+## Before you start (Chrome)
 
 1. **Check the browser tools.** You need the Claude in Chrome tools (`mcp__claude-in-chrome__*`).
    If they're missing, or a call says the extension isn't connected, stop and walk the person through

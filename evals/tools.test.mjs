@@ -14,13 +14,19 @@ import { SERVER, serverEnv } from "./lib/server-env.mjs";
 let mock;
 let client;
 
+// Starts the server against the fake DoorLoop; `web` is the fake web login ("ok", "expired" or none).
+async function connect(web) {
+  const dir = mkdtempSync(join(tmpdir(), "doorloop-tools-"));
+  const c = new Client({ name: "doorloop-evals", version: "0" });
+  await c.connect(
+    new StdioClientTransport({ command: process.execPath, args: [SERVER], env: { PATH: process.env.PATH, ...serverEnv(mock.url, dir, web) } }),
+  );
+  return c;
+}
+
 before(async () => {
   mock = await startMock();
-  const dir = mkdtempSync(join(tmpdir(), "doorloop-tools-"));
-  client = new Client({ name: "doorloop-evals", version: "0" });
-  await client.connect(
-    new StdioClientTransport({ command: process.execPath, args: [SERVER], env: { PATH: process.env.PATH, ...serverEnv(mock.url, dir) } }),
-  );
+  client = await connect("ok");
 });
 
 after(async () => {
@@ -30,8 +36,8 @@ after(async () => {
 
 beforeEach(() => (mock.log.length = 0));
 
-async function call(name, args = {}) {
-  const res = await client.callTool({ name, arguments: args });
+async function call(name, args = {}, via = client) {
+  const res = await via.callTool({ name, arguments: args });
   const text = res.content.find((c) => c.type === "text")?.text ?? "";
   let data;
   try {
@@ -48,7 +54,7 @@ describe("tool list", () => {
   test("every write tool previews unless confirm is true", async () => {
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name);
-    for (const t of ["list_past_due_leases", "create_lease", "create_lease_charge", "assign_task", "create_task", "create_work_order"]) {
+    for (const t of ["list_past_due_leases", "create_unit", "create_property_with_units", "create_lease", "create_lease_charge", "assign_task", "create_task", "create_work_order"]) {
       assert.ok(names.includes(t), `${t} is listed`);
     }
     for (const t of tools.filter((t) => !t.annotations?.readOnlyHint)) {
@@ -241,6 +247,92 @@ describe("tasks", () => {
     assert.equal(res.content[1].mimeType, "image/png");
     const none = await call("get_task_files", { task: IDS.task.paint });
     assert.deepEqual(JSON.parse(none.content[0].text), []);
+  });
+});
+
+describe("web login: units and properties", () => {
+  const apt5 = { property: IDS.property.reservation, name: "Apt 5", beds: 2, baths: 1, size: 850, marketRent: 1250 };
+
+  test("web_login_status says which company is saved and never returns the login", async () => {
+    const { data, text } = await call("web_login_status");
+    assert.equal(data.saved, true);
+    assert.equal(data.host, new URL(mock.url).host);
+    assert.ok(!text.includes("dl_web"), "no header or cookie value in the result");
+  });
+
+  test("create_unit preview sends nothing", async () => {
+    const { data } = await call("create_unit", apt5);
+    assert.equal(data.preview, true);
+    assert.equal(data.request.name, "Apt 5");
+    assert.equal(data.request.addressSameAsProperty, true);
+    assert.deepEqual(writes(), []);
+  });
+
+  test("create_unit confirm posts /units with the web login, not the API key", async () => {
+    const { data, isError } = await call("create_unit", { ...apt5, confirm: true });
+    assert.ok(!isError, JSON.stringify(data));
+    const [w] = writes();
+    assert.equal(writes().length, 1);
+    assert.equal(w.path, "/units");
+    assert.equal(w.web, "ok");
+    assert.equal(w.authorized, false, "the API key is not sent with web-login calls");
+    assert.equal(w.body.property, IDS.property.reservation);
+    assert.equal(w.body.marketRent, 1250);
+    assert.ok(mock.world.units.some((u) => u.id === data.id && u.name === "Apt 5"));
+  });
+
+  test("a unit with its own address sends it", async () => {
+    const address = { street1: "7307 Reservation Dr Rear", city: "Springfield", state: "VA", zip: "22150" };
+    const { data } = await call("create_unit", { ...apt5, name: "Rear", address });
+    assert.equal(data.request.addressSameAsProperty, false);
+    assert.equal(data.request.address.street1, address.street1);
+    assert.equal(data.request.address.country, "United States");
+  });
+
+  test("create_property_with_units previews, then posts the wizard once", async () => {
+    const args = {
+      street1: "1 Test Way",
+      city: "Springfield",
+      state: "VA",
+      zip: "22150",
+      units: [{ name: "Unit 1", beds: 1 }, { name: "Unit 2", beds: 2 }],
+    };
+    const preview = await call("create_property_with_units", args);
+    assert.equal(preview.data.preview, true);
+    assert.equal(preview.data.request.units.length, 2);
+    assert.deepEqual(writes(), []);
+
+    const { data } = await call("create_property_with_units", { ...args, confirm: true });
+    assert.equal(writes().length, 1);
+    assert.equal(writes()[0].path, "/properties/create-property-wizard");
+    assert.equal(data.units.length, 2);
+    assert.ok(data.units.every((u) => u.property === data.id));
+  });
+
+  test("an expired web login says to run npm run web-login and creates nothing", async () => {
+    const expired = await connect("expired");
+    try {
+      const res = await call("create_unit", { ...apt5, confirm: true }, expired);
+      assert.equal(res.isError, true);
+      assert.match(res.text, /npm run web-login/);
+      assert.match(res.text, /Nothing was created/);
+    } finally {
+      await expired.close();
+    }
+  });
+
+  test("with no web login saved, previews still work and confirm says how to save one", async () => {
+    const none = await connect();
+    try {
+      assert.equal((await call("web_login_status", {}, none)).data.saved, false);
+      assert.equal((await call("create_unit", apt5, none)).data.preview, true);
+      const res = await call("create_unit", { ...apt5, confirm: true }, none);
+      assert.equal(res.isError, true);
+      assert.match(res.text, /npm run web-login/);
+      assert.deepEqual(writes(), []);
+    } finally {
+      await none.close();
+    }
   });
 });
 

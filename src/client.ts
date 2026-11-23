@@ -16,9 +16,14 @@ export class DoorLoopError extends Error {
 }
 
 export class DoorLoopClient {
-  private nextSlot = 0;
+  // Shared by every client, so API-key and web-login calls together stay under DoorLoop's limit.
+  private static nextSlot = 0;
 
-  constructor(private readonly apiKey: string) {}
+  // `auth` is an API key, or the web login's saved headers for the endpoints API keys can't use.
+  constructor(
+    private readonly auth: string | Record<string, string>,
+    private readonly baseUrl: string = BASE_URL,
+  ) {}
 
   get<T = unknown>(path: string, query?: Query): Promise<T> {
     return this.request<T>("GET", path, query);
@@ -50,20 +55,19 @@ export class DoorLoopClient {
   }
 
   private async send(method: string, path: string, query: Query | undefined, body: unknown, accept: string) {
-    const url = new URL(BASE_URL.replace(/\/$/, "") + "/" + path.replace(/^\//, ""));
+    const url = new URL(this.baseUrl.replace(/\/$/, "") + "/" + path.replace(/^\//, ""));
     for (const [k, v] of Object.entries(query ?? {})) {
       if (v !== undefined) url.searchParams.set(k, String(v));
     }
 
     for (let attempt = 0; ; attempt++) {
       await this.throttle();
+      const headers = new Headers(typeof this.auth === "string" ? { Authorization: `bearer ${this.auth}` } : this.auth);
+      headers.set("Accept", accept);
+      if (body !== undefined) headers.set("Content-Type", "application/json");
       const res = await fetch(url, {
         method,
-        headers: {
-          Authorization: `bearer ${this.apiKey}`,
-          Accept: accept,
-          ...(body !== undefined && { "Content-Type": "application/json" }),
-        },
+        headers,
         body: body === undefined ? undefined : JSON.stringify(body),
       });
 
@@ -78,8 +82,8 @@ export class DoorLoopClient {
 
   private async throttle(): Promise<void> {
     const now = Date.now();
-    const wait = this.nextSlot - now;
-    this.nextSlot = Math.max(now, this.nextSlot) + MIN_INTERVAL_MS;
+    const wait = DoorLoopClient.nextSlot - now;
+    DoorLoopClient.nextSlot = Math.max(now, DoorLoopClient.nextSlot) + MIN_INTERVAL_MS;
     if (wait > 0) await sleep(wait);
   }
 }

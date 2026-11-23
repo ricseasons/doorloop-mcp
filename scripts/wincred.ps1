@@ -1,10 +1,14 @@
 # Reads and writes the DoorLoop API key in Windows Credential Manager, the Windows keychain.
-# Usage: wincred.ps1 read | exists | write | delete
+# Usage: wincred.ps1 read | exists | write | delete [account]   (account defaults to api-key)
 #   write takes the key on stdin, so it never appears on a command line.
-param([Parameter(Mandatory = $true)][ValidateSet('read', 'exists', 'write', 'delete')][string]$Action)
+param(
+    [Parameter(Mandatory = $true)][ValidateSet('read', 'exists', 'write', 'delete')][string]$Action,
+    [ValidateSet('api-key', 'web-session')][string]$Account = 'api-key'
+)
 $ErrorActionPreference = 'Stop'
-$Target = 'doorloop-mcp'
-$User = 'api-key'
+# The API key keeps its original target name so existing installs still find it.
+$Target = if ($Account -eq 'api-key') { 'doorloop-mcp' } else { "doorloop-mcp/$Account" }
+$User = $Account
 
 Add-Type -TypeDefinition @'
 using System;
