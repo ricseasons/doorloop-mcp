@@ -22,6 +22,7 @@ Delete the charges first, then the lease, then the tenant (if DoorLoop doesn't r
 | --- | --- | --- | --- |
 | Unit "API Test Unit" | `6adaef1812eb6d62b9152a71` | 7307 Reservation Drive | Added through Claude in Chrome 2026-10-23 |
 | File "TEST-lease.pdf" | `6b03be1b66f35f6b8bd6be56` | Apt 2 test lease `6add8a51392b97a84059c9db` | Uploaded through Chrome 2026-11-23 to capture the upload request |
+| File "TEST-lease-tool-upload.pdf" | `6b03bef90c61d72326c26cef` | Apt 2 test lease `6add8a51392b97a84059c9db` | Uploaded with `upload_lease_file` (API key) 2026-11-23 |
 | Unit "Web Login Test" | `6b03bce2cf083d2a6200d9a1` | 7307 Reservation Drive | Added with `create_unit` and the saved web login 2026-11-23 |
 | Subtask | `6adadedc7eb2a1d131e9521b` | 7307 task "Pest Control" `6ad9736b315f38741ee8102f` | Task-control skill test |
 | Work order | `6adadede89ebd97822a3f534` | 7307 task "Pest Control" `6ad9736b315f38741ee8102f` | Task-control skill test |

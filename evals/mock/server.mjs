@@ -171,10 +171,8 @@ function route(w, method, path, q, body, web = false) {
     w.units.push(unit);
     return [200, unit];
   }
-  // The web app's file upload (multipart). Whether an API key may upload is unknown; the fake refuses it like
-  // units, so the evals cover the fall back to the web login.
+  // The web app's file upload (multipart); the API key may send it too.
   if (method === "POST" && collection === "files" && !id) {
-    if (!web) return [405, { message: "Access Denied" }];
     const target = body?.["linkedResource[resourceType]"] === "LEASE" && w.leases.find((l) => l.id === body["linkedResource[resourceId]"]);
     if (!target || !body.file?.size) return [400, { message: "Bad upload" }];
     const file = {

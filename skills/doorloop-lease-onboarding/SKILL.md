@@ -193,8 +193,7 @@ than a month ago, and ask whether to start rent from the current month instead (
 When the leases came from documents (not a spreadsheet), offer to attach each source file to its new lease
 with `upload_lease_file` (`lease` = the new lease id, `file_path` = the document's full path). Preview them
 all first and show one list (lease, file name, size), then wait for a yes; a yes on the leases is not a yes
-on the uploads. Upload each once. If one is refused for the web login, ask the person to run
-`npm run web-login` and carry on with the rest afterwards.
+on the uploads. Upload each once; if one fails, report it and carry on with the rest only if the person agrees.
 
 ## 5b. Set per-lease late fees
 

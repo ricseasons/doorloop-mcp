@@ -350,22 +350,18 @@ describe("upload_lease_file", () => {
     assert.deepEqual(writes(), []);
   });
 
-  test("confirm sends the web app's multipart form, falling back to the web login when the key is refused", async () => {
+  test("confirm sends the web app's multipart form once, with the API key", async () => {
     const { data, isError } = await call("upload_lease_file", { lease, file_path: pdf, name: "Signed lease.pdf", confirm: true });
     assert.ok(!isError, JSON.stringify(data));
     const posts = writes();
-    assert.deepEqual(posts.map((w) => [w.path, w.status, w.authorized, w.web]), [
-      ["/files", 405, true, undefined],
-      ["/files", 200, false, "ok"],
-    ]);
-    const form = posts[1].body;
+    assert.deepEqual(posts.map((w) => [w.path, w.status, w.authorized]), [["/files", 200, true]]);
+    const form = posts[0].body;
     assert.equal(form.name, "Signed lease.pdf");
     assert.equal(form["linkedResource[resourceId]"], lease);
     assert.equal(form["linkedResource[resourceType]"], "LEASE");
     assert.equal(form.rank, "1");
     assert.deepEqual(form.file, { name: "Signed lease.pdf", type: "application/pdf", size: statSync(pdf).size });
-    assert.equal(data.via, "web-login");
-    assert.ok(mock.world.files.some((f) => f.id === data.file.id && f.linkedResource.resourceId === lease));
+    assert.ok(mock.world.files.some((f) => f.id === data.id && f.linkedResource.resourceId === lease));
   });
 
   test("an unsupported file type or a missing file is refused before any request", async () => {
@@ -374,18 +370,6 @@ describe("upload_lease_file", () => {
     assert.equal((await call("upload_lease_file", { lease, file_path: txt, confirm: true })).isError, true);
     assert.equal((await call("upload_lease_file", { lease, file_path: "/nope/lease.pdf", confirm: true })).isError, true);
     assert.equal(mock.log.length, 0);
-  });
-
-  test("with the key refused and no web login saved, it says to run npm run web-login", async () => {
-    const none = await connect();
-    try {
-      const res = await call("upload_lease_file", { lease, file_path: pdf, confirm: true }, none);
-      assert.equal(res.isError, true);
-      assert.match(res.text, /npm run web-login/);
-      assert.equal(mock.world.files.filter((f) => f.linkedResource.resourceType === "LEASE").length, 1);
-    } finally {
-      await none.close();
-    }
   });
 });
 

@@ -824,16 +824,14 @@ const LEASE_FILE_TYPES: Record<string, string> = {
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 // Mirrors the web app's "Add file" dialog on a lease's Files tab (captured 2026-11-23): one multipart
-// POST /api/files/ linked to the lease. Tries the API key first and falls back to the web login if
-// DoorLoop refuses the key, and says which one it used.
+// POST /api/files/ linked to the lease. The API key may send it (tested 2026-11-23).
 server.registerTool(
   "upload_lease_file",
   {
     description:
       "Attach a document (e.g. the signed lease PDF) from this computer to a DoorLoop lease's Files. Without " +
       "confirm=true this only checks the file and the lease and returns what it would upload, so show that to the " +
-      "user and get their OK first. Uses the API key, or the web login saved by `npm run web-login` if DoorLoop " +
-      "refuses the key.",
+      "user and get their OK first.",
     inputSchema: {
       lease: z.string().describe("Lease id"),
       file_path: z.string().describe("Absolute path of the file on this computer (PDF, Word, JPG or PNG)"),
@@ -866,12 +864,7 @@ server.registerTool(
     form.append("linkedResource[resourceId]", target.id);
     form.append("linkedResource[resourceType]", "LEASE");
     form.append("rank", "1");
-    try {
-      return json({ via: "api-key", file: await client.postForm("/files/", form) });
-    } catch (err) {
-      if (!(err instanceof DoorLoopError && [401, 403, 405].includes(err.status))) throw err;
-    }
-    return json({ via: "web-login", file: await asWebUser((web) => web.postForm("/files/", form)) });
+    return json(await client.postForm("/files/", form));
   },
 );
 
